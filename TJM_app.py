@@ -194,7 +194,7 @@ class PDF(FPDF):
 # =======================
 # App state & UI
 # =======================
-st.set_page_config(page_title="Megatex Cotizador", page_icon="Megatex.png", layout="wide")
+st.set_page_config(page_title="Megatex Cotizador", page_icon="logo.png", layout="wide")
 
 TABLA_DISENOS, TIPOS_CORTINA, PRECIOS_MANO_DE_OBRA, DISENOS_A_TIPOS, DF_DISENOS = load_designs_from_excel(DESIGNS_XLSX_PATH)
 BOM_DICT, DF_BOM = load_bom_from_excel(BOM_XLSX_PATH)
@@ -526,3 +526,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

@@ -194,7 +194,7 @@ class PDF(FPDF):
 # =======================
 # App state & UI
 # =======================
-st.set_page_config(page_title="Megatex Cotizador", page_icon="logo.png", layout="wide")
+st.set_page_config(page_title="Almacén Legal Cotizador", page_icon="logo.png", layout="wide")
 
 TABLA_DISENOS, TIPOS_CORTINA, PRECIOS_MANO_DE_OBRA, DISENOS_A_TIPOS, DF_DISENOS = load_designs_from_excel(DESIGNS_XLSX_PATH)
 BOM_DICT, DF_BOM = load_bom_from_excel(BOM_XLSX_PATH)
@@ -215,7 +215,9 @@ def init_state():
 
 def sidebar():
     with st.sidebar:
-        st.title("Megatex Cotizador")
+        # Agrega la imagen del logo y el título debajo
+        st.image("logo.png") 
+        st.title("Almacén Legal Cotizador")
         st.caption(f"Diseños: {DESIGNS_XLSX_PATH}")
         st.caption(f"BOM: {BOM_XLSX_PATH}")
         st.caption(f"Catálogo insumos: {CATALOG_XLSX_PATH}")
@@ -526,4 +528,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 

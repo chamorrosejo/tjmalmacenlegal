@@ -276,7 +276,8 @@ def pantalla_cotizador():
         colores = [x["color"] for x in CATALOGO_TELAS[tipo][ref]]
         color = st.selectbox(f"Color {prefix}", options=colores, key=color_key)
         info = next(x for x in CATALOGO_TELAS[tipo][ref] if x["color"] == color)
-        st.session_state.setdefault(pvp_key, info["pvp"])
+        
+        st.session_state[pvp_key] = info["pvp"]
         st.text_input(f"PVP/Metro TELA {prefix} ($)", value=f"${int(info['pvp']):,}", disabled=True)
 
         st.radio(f"Modo de confección {prefix}", options=["Entera", "Partida", "Semipartida"], horizontal=True, key=modo_key)
@@ -299,7 +300,6 @@ def pantalla_cotizador():
     if st.session_state.get('cortina_calculada'):
         st.success("Cálculo realizado. Revisa los detalles a continuación.")
         df_detalle = pd.DataFrame(st.session_state.cortina_calculada['detalle_insumos'])
-
         df_detalle['P.V.P/Unit ($)'] = df_detalle['P.V.P/Unit ($)'].apply(lambda x: f"${int(x):,}")
         df_detalle['Precio ($)'] = df_detalle['Precio ($)'].apply(lambda x: f"${int(x):,}")
 
@@ -308,6 +308,7 @@ def pantalla_cotizador():
         c1.metric("Subtotal Cortina", f"${int(st.session_state.cortina_calculada['subtotal']):,}")
         c2.metric("IVA Cortina", f"${int(st.session_state.cortina_calculada['iva']):,}")
         c3.metric("Total Cortina", f"${int(st.session_state.cortina_calculada['total']):,}")
+
 
 def mostrar_insumos_bom(diseno_sel: str):
     items = [it for it in BOM_DICT.get(diseno_sel, []) if it["DependeDeSeleccion"] == "SI"]

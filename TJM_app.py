@@ -270,7 +270,7 @@ def pantalla_cotizador():
     st.number_input("Ancho Cortina (m)", value=float(ancho_cortina), step=0.1, disabled=True, key="ancho_cortina_info")
 
     st.markdown("---")
-    st.subheader("3. Selecciona la(s) Tela(s)")
+    st.subheader("3. Selecciona la Tela")
 
     def ui_tela(prefix: str):
         tipo_key = f"tipo_tela_sel_{prefix}"
@@ -628,4 +628,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 

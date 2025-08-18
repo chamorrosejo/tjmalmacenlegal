@@ -241,7 +241,7 @@ def sidebar():
             st.session_state.pagina_actual = 'cotizador'; st.rerun()
         if st.button("Datos de la Cotización", use_container_width=True):
             st.session_state.pagina_actual = 'datos'; st.rerun()
-        if st.button("Ver Resumen Final", use_container_width=True):
+        if st.button("Ver Cotización", use_container_width=True):
             st.session_state.pagina_actual = 'resumen'; st.rerun()
 
 def pantalla_cotizador():
@@ -637,3 +637,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

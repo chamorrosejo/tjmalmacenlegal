@@ -213,16 +213,24 @@ def init_state():
     if 'tipo_cortina_sel' not in st.session_state:
         st.session_state.tipo_cortina_sel = list(TIPOS_CORTINA.keys())[0]
 
+# Ubica y modifica la función sidebar() en tu código.
+# Comenta o elimina las líneas que muestran las rutas de los archivos.
+
 def sidebar():
     with st.sidebar:
-        # Agrega la imagen del logo y el título debajo
         st.image("logo.png") 
         st.title("Almacén Legal Cotizador")
-        st.caption(f"Diseños: {DESIGNS_XLSX_PATH}")
-        st.caption(f"BOM: {BOM_XLSX_PATH}")
-        st.caption(f"Catálogo insumos: {CATALOG_XLSX_PATH}")
-        st.caption(f"Catálogo telas: {CATALOG_TELAS_XLSX_PATH}")
-        if st.button("Recargar datos"):
+        # --- ELIMINAR O COMENTAR ESTAS LÍNEAS ---
+        # st.caption(f"Diseños: {DESIGNS_XLSX_PATH}")
+        # st.caption(f"BOM: {BOM_XLSX_PATH}")
+        # st.caption(f"Catálogo insumos: {CATALOG_XLSX_PATH}")
+        # st.caption(f"Catálogo telas: {CATALOG_TELAS_XLSX_PATH}")
+        # ----------------------------------------
+        
+        # --- Cambiar el botón "Recargar datos" por "Gestión de Datos" ---
+        if st.button("Gestión de Datos", use_container_width=True): # Nuevo botón
+            st.session_state.pagina_actual = 'gestion_datos'; st.rerun()
+        if st.button("Recargar datos"): # Mantenemos el de recarga, pero sin texto
             st.cache_data.clear(); st.cache_resource.clear(); st.rerun()
         st.divider()
         if st.button("Crear Cotización", use_container_width=True):
@@ -510,10 +518,80 @@ def pantalla_resumen():
     c1.metric("Subtotal", f"${int(subtotal):,}")
     c2.metric(f"IVA ({IVA_PERCENT:.0%})", f"${int(iva):,}")
     c3.metric("Total Cotización", f"${int(total_final):,}")
+# Añade esta nueva función en tu archivo, por ejemplo,
+# justo antes de la función `main()`
+import io
 
+def create_template_excel(column_names: list, sheet_name: str = "Plantilla"):
+    """
+    Crea un archivo Excel en memoria con solo los encabezados de las columnas.
+    Retorna los bytes del archivo para que Streamlit pueda descargarlo.
+    """
+    df = pd.DataFrame(columns=column_names)
+    buffer = io.BytesIO()
+    with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
+        df.to_excel(writer, index=False, sheet_name=sheet_name)
+    buffer.seek(0)
+    return buffer
+
+def pantalla_gestion_datos():
+    st.header("Gestión de Archivos de Datos")
+    st.info("Utiliza los botones de abajo para descargar las plantillas de Excel.")
+    
+    st.subheader("1. Plantilla de Diseños")
+    st.markdown("Columnas requeridas: `Diseño`, `Tipo`, `Multiplicador`, `PVP M.O.`")
+    if st.button("Descargar Plantilla de Diseños", key="download_designs"):
+        template_buffer = create_template_excel(REQUIRED_DESIGNS_COLS, "Diseños")
+        st.download_button(
+            label="Haz click para descargar",
+            data=template_buffer,
+            file_name="plantilla_disenos.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        st.success("Plantilla generada. Haz click en el botón de descarga.")
+    
+    st.markdown("---")
+    st.subheader("2. Plantilla de BOM")
+    st.markdown("Columnas requeridas: `Diseño`, `Insumo`, `Unidad`, `ReglaCantidad`, `Parametro`, `DependeDeSeleccion`, `Observaciones`")
+    if st.button("Descargar Plantilla de BOM", key="download_bom"):
+        template_buffer = create_template_excel(REQUIRED_BOM_COLS, "BOM")
+        st.download_button(
+            label="Haz click para descargar",
+            data=template_buffer,
+            file_name="plantilla_bom.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        st.success("Plantilla generada. Haz click en el botón de descarga.")
+        
+    st.markdown("---")
+    st.subheader("3. Plantilla de Catálogo de Insumos")
+    st.markdown("Columnas requeridas: `Insumo`, `Unidad`, `Ref`, `Color`, `PVP`")
+    if st.button("Descargar Plantilla de Insumos", key="download_insumos"):
+        template_buffer = create_template_excel(REQUIRED_CAT_COLS, "Catalogo_Insumos")
+        st.download_button(
+            label="Haz click para descargar",
+            data=template_buffer,
+            file_name="plantilla_insumos.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        st.success("Plantilla generada. Haz click en el botón de descarga.")
+        
+    st.markdown("---")
+    st.subheader("4. Plantilla de Catálogo de Telas")
+    st.markdown("Columnas requeridas: `TipoTela`, `Referencia`, `Color`, `PVP/Metro ($)`")
+    if st.button("Descargar Plantilla de Telas", key="download_telas"):
+        template_buffer = create_template_excel(REQUIRED_TELAS_COLS, "Catalogo_Telas")
+        st.download_button(
+            label="Haz click para descargar",
+            data=template_buffer,
+            file_name="plantilla_telas.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        st.success("Plantilla generada. Haz click en el botón de descarga.")
 # =======================
 # MAIN
 # =======================
+# Modifica la función main()
 def main():
     init_state()
     with st.sidebar:
@@ -523,10 +601,9 @@ def main():
         pantalla_datos()
     elif page == 'resumen':
         pantalla_resumen()
+    elif page == 'gestion_datos': # Añade esta nueva condición
+        pantalla_gestion_datos()
     else:
         pantalla_cotizador()
-
-if __name__ == "__main__":
-    main()
 
 

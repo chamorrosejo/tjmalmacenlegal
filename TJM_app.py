@@ -222,7 +222,6 @@ def init_state():
 
 def anadir_a_resumen():
     if st.session_state.get('cortina_calculada'):
-        # Solo añade la cortina, no resetea la pantalla
         st.session_state.cortinas_resumen.append(st.session_state.cortina_calculada)
         st.success("¡Cortina añadida a la cotización!")
 
@@ -348,7 +347,7 @@ def pantalla_cotizador():
         c2.metric("IVA Cortina", f"${int(st.session_state.cortina_calculada['iva']):,}")
         c3.metric("Total Cortina", f"${int(st.session_state.cortina_calculada['total']):,}")
         
-        st.markdown("---") # Añadimos un separador para el botón
+        st.markdown("---")
         if st.button("Añadir a la Cotización"):
             anadir_a_resumen()
 
@@ -486,11 +485,14 @@ def calcular_y_mostrar_cotizacion():
     else:
         tela_info["tela2"] = None
 
+    selected_insumos_info = st.session_state.get("insumos_seleccion", {}).copy()
+
     st.session_state.cortina_calculada = {
         "tipo": st.session_state.tipo_cortina_sel,
         "diseno": diseno, "multiplicador": multiplicador, "ancho": ancho, "alto": alto,
         "cantidad": num_cortinas,
         "telas": tela_info,
+        "insumos_seleccion": selected_insumos_info,
         "detalle_insumos": detalle_insumos, "subtotal": subtotal_sin_iva, "iva": iva, "total": total
     }
 
@@ -509,8 +511,6 @@ def pantalla_datos():
         vendedor = st.session_state.datos_cotizacion['vendedor']
         vendedor['nombre'] = st.text_input("Nombre Vendedor:", value=vendedor.get('nombre', ''))
         vendedor['telefono'] = st.text_input("Teléfono Vendedor:", value=vendedor.get('telefono', ''))
-
-# Ubica y reemplaza la función pantalla_resumen() con este código
 
 def pantalla_resumen():
     st.header("Resumen de la Cotización")
@@ -534,35 +534,29 @@ def pantalla_resumen():
     else:
         for i, cortina in enumerate(st.session_state.cortinas_resumen):
             with st.container(border=True):
-                # Utilizamos tres columnas para el nuevo diseño: izquierda, centro, derecha
                 col_izq, col_cen, col_der = st.columns([2, 3, 1])
                 
-                # --- Columna Izquierda (Dimensiones y Cantidad) ---
                 ancho_calc = cortina['ancho'] * cortina['multiplicador']
                 col_izq.markdown(f"**Dimensiones:** {ancho_calc:.2f} × {cortina['alto']:.2f} m")
                 col_izq.markdown(f"**Cantidad:** {cortina['cantidad']} und")
 
-                # --- Columna Central (Diseño e Insumos) ---
                 col_cen.markdown(f"**{cortina['diseno']}**")
                 
-                # Información de la Tela
                 if cortina['telas']['tela1']:
                     tela1_info = cortina['telas']['tela1']
                     tela1_str = f"Tela 1: {tela1_info['referencia']} - {tela1_info['color']}"
                     col_cen.markdown(f"• {tela1_str}")
                 
-                # Información de la Tela 2 (si existe)
-                if cortina['telas']['tela2']:
+                if cortina['telas'].get('tela2') and cortina['telas']['tela2'].get('referencia'):
                     tela2_info = cortina['telas']['tela2']
                     tela2_str = f"Tela 2: {tela2_info['referencia']} - {tela2_info['color']}"
                     col_cen.markdown(f"• {tela2_str}")
                 
-                # Información de los Insumos Adicionales
-                if cortina.get('insumos_seleccion'):
-                    for insumo, info in cortina['insumos_seleccion'].items():
+                insumos_sel = cortina.get('insumos_seleccion', {})
+                if insumos_sel:
+                    for insumo, info in insumos_sel.items():
                         col_cen.markdown(f"• {insumo}: {info['ref']} - {info['color']}")
 
-                # --- Columna Derecha (Valor Total) ---
                 col_der.markdown(f"<p style='text-align:right;'>**${int(cortina['total']):,}**</p>", unsafe_allow_html=True)
                 
     total_final = sum(c['total'] for c in st.session_state.cortinas_resumen)
@@ -573,6 +567,7 @@ def pantalla_resumen():
     c1.metric("Subtotal", f"${int(subtotal):,}")
     c2.metric(f"IVA ({IVA_PERCENT:.0%})", f"${int(iva):,}")
     c3.metric("Total Cotización", f"${int(total_final):,}")
+
 # --- PANTALLA DE GESTIÓN DE DATOS ---
 def create_template_excel(column_names: list, sheet_name: str = "Plantilla"):
     """
@@ -663,6 +658,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-

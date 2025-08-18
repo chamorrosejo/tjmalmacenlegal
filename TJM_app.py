@@ -219,8 +219,12 @@ def init_state():
         st.session_state.cortinas_resumen = []
     if 'cortina_calculada' not in st.session_state:
         st.session_state.cortina_calculada = None
-    if 'tipo_cortina_sel' not in st.session_state:
-        st.session_state.tipo_cortina_sel = list(TIPOS_CORTINA.keys())[0]
+
+def anadir_a_resumen():
+    if st.session_state.get('cortina_calculada'):
+        st.session_state.cortinas_resumen.append(st.session_state.cortina_calculada)
+        st.session_state.cortina_calculada = None
+        st.success("¡Cortina añadida a la cotización!")
 
 def sidebar():
     with st.sidebar:
@@ -324,8 +328,11 @@ def pantalla_cotizador():
     st.subheader("Insumos de la Cortina")
     mostrar_insumos_bom(diseno_sel)
 
-    if st.button("Calcular Cotización", type="primary"):
-        calcular_y_mostrar_cotizacion()
+    btn_col1, btn_col2 = st.columns([0.5, 0.5])
+    btn_col1.button("Calcular Cotización", type="primary")
+
+    if st.session_state.get('cortina_calculada'):
+        btn_col2.button("Añadir a la Cotización", on_click=anadir_a_resumen)
 
     if st.session_state.get('cortina_calculada'):
         st.success("Cálculo realizado. Revisa los detalles a continuación.")

@@ -243,6 +243,7 @@ def sidebar():
         if st.button("Ver Cotización", use_container_width=True):
             st.session_state.pagina_actual = 'resumen'; st.rerun()
 
+# Reemplaza la función pantalla_cotizador() con este código
 def pantalla_cotizador():
     st.header("Crea la Cortina")
     st.subheader("1. Medidas")
@@ -260,11 +261,23 @@ def pantalla_cotizador():
     if not disenos_disponibles:
         st.error("No hay diseños disponibles para el tipo seleccionado.")
         st.stop()
-
+    
+    # Guardamos el diseño previo para compararlo
     diseno_previo = st.session_state.get("diseno_sel", disenos_disponibles[0])
     if diseno_previo not in disenos_disponibles:
         diseno_previo = disenos_disponibles[0]
+    
     diseno_sel = st.selectbox("Diseño", options=disenos_disponibles, index=disenos_disponibles.index(diseno_previo), key="diseno_sel")
+    
+    # --- AÑADIMOS LA LÓGICA PARA REINICIAR LAS SELECCIONES AL CAMBIAR EL DISEÑO ---
+    # Limpia la selección de insumos si el diseño ha cambiado
+    if diseno_sel != st.session_state.get('last_diseno_sel'):
+        st.session_state.insumos_seleccion = {}
+        st.session_state.last_diseno_sel = diseno_sel
+    
+    # Actualiza el estado del diseño previo para el próximo rerun
+    st.session_state.last_diseno_sel = diseno_sel
+    # -----------------------------------------------------------------------------
 
     valor_multiplicador = float(TABLA_DISENOS.get(diseno_sel, 2.0))
     multiplicador = st.number_input("Multiplicador", min_value=1.0, value=valor_multiplicador, step=0.1, key="multiplicador")
@@ -658,3 +671,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

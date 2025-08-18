@@ -40,7 +40,7 @@ _default_cat_tel = os.path.join(SCRIPT_DIR, "data", "catalogo_telas.xlsx")
 DESIGNS_XLSX_PATH      = os.environ.get("DESIGNS_XLSX_PATH")       or st.secrets.get("DESIGNS_XLSX_PATH", _default_designs)
 BOM_XLSX_PATH          = os.environ.get("BOM_XLSX_PATH")           or st.secrets.get("BOM_XLSX_PATH", _default_bom)
 CATALOG_XLSX_PATH      = os.environ.get("CATALOG_XLSX_PATH")       or st.secrets.get("CATALOG_XLSX_PATH", _default_cat_ins)
-CATALOGO_TELAS_XLSX_PATH = (os.environ.get("CATALOGO_TELAS_XLSX_PATH")    or st.secrets.get("CATALOGO_TELAS_XLSX_PATH", _default_cat_tel)
+CATALOGO_TELAS_XLSX_PATH = (os.environ.get("CATALOGO_TELAS_XLSX_PATH")    or st.secrets.get("CATALOGO_TELAS_XLSX_PATH", _default_cat_tel))
 
 REQUIRED_DESIGNS_COLS = ["Diseño", "Tipo", "Multiplicador", "PVP M.O."]
 REQUIRED_BOM_COLS     = ["Diseño", "Insumo", "Unidad", "ReglaCantidad", "Parametro", "DependeDeSeleccion", "Observaciones"]
@@ -783,4 +783,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 

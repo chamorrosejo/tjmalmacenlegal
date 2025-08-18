@@ -246,6 +246,56 @@ def duplicar_cortina(index):
     st.session_state.cortinas_resumen.append(cortina_duplicada)
     st.success("¡Cortina duplicada y añadida al resumen!")
 
+def generar_pdf_cotizacion():
+    pdf = PDF()
+    pdf.alias_nb_pages()
+    pdf.add_page()
+    pdf.set_font('Arial', '', 12)
+    
+    cliente = st.session_state.datos_cotizacion['cliente']
+    vendedor = st.session_state.datos_cotizacion['vendedor']
+    pdf.set_text_color(0)
+    pdf.cell(0, 10, f"Cliente: {cliente.get('nombre', 'N/A')}", 0, 1)
+    pdf.cell(0, 10, f"Vendedor: {vendedor.get('nombre', 'N/A')}", 0, 1)
+    pdf.ln(10)
+    
+    pdf.set_font('Arial', 'B', 12)
+    pdf.cell(0, 10, 'Detalle de Productos:', 0, 1)
+    pdf.set_font('Arial', '', 10)
+    
+    for i, cortina in enumerate(st.session_state.cortinas_resumen):
+        pdf.multi_cell(0, 5, f"Cortina #{i+1}: {cortina['diseno']}", 0, 1)
+        ancho_calc = cortina['ancho'] * cortina['multiplicador']
+        pdf.multi_cell(0, 5, f"  - Dimensiones: {ancho_calc:.2f} x {cortina['alto']:.2f} m", 0, 1)
+        pdf.multi_cell(0, 5, f"  - Cantidad: {cortina['cantidad']} und", 0, 1)
+        
+        if cortina['telas']['tela1']:
+            tela1_info = cortina['telas']['tela1']
+            pdf.multi_cell(0, 5, f"  - Tela 1: {tela1_info['referencia']} - {tela1_info['color']} [{tela1_info['modo_confeccion']}]", 0, 1)
+        if cortina['telas'].get('tela2') and cortina['telas']['tela2'].get('referencia'):
+            tela2_info = cortina['telas']['tela2']
+            pdf.multi_cell(0, 5, f"  - Tela 2: {tela2_info['referencia']} - {tela2_info['color']} [{tela2_info['modo_confeccion']}]", 0, 1)
+        
+        insumos_sel = cortina.get('insumos_seleccion', {})
+        if insumos_sel:
+            for insumo, info in insumos_sel.items():
+                pdf.multi_cell(0, 5, f"  - Insumo: {insumo} ({info['ref']} - {info['color']})", 0, 1)
+
+        pdf.multi_cell(0, 5, f"  - Total Cortina: ${int(cortina['total']):,}", 0, 1)
+        pdf.ln(5)
+    
+    total_final = sum(c['total'] for c in st.session_state.cortinas_resumen)
+    iva = total_final * IVA_PERCENT
+    subtotal = total_final - iva
+    
+    pdf.set_font('Arial', 'B', 12)
+    pdf.cell(0, 10, f"Subtotal: ${int(subtotal):,}", 0, 1, 'R')
+    pdf.cell(0, 10, f"IVA ({IVA_PERCENT:.0%}): ${int(iva):,}", 0, 1, 'R')
+    pdf.set_font('Arial', 'B', 14)
+    pdf.cell(0, 10, f"TOTAL: ${int(total_final):,}", 0, 1, 'R')
+
+    return pdf.output(dest='S').encode('latin-1')
+
 def sidebar():
     with st.sidebar:
         st.image("logo.png") 

@@ -219,11 +219,25 @@ def init_state():
         st.session_state.cortinas_resumen = []
     if 'cortina_calculada' not in st.session_state:
         st.session_state.cortina_calculada = None
+    if 'last_diseno_sel' not in st.session_state:
+        st.session_state.last_diseno_sel = None
+    if 'cortina_a_editar' not in st.session_state:
+        st.session_state.cortina_a_editar = None
+    if 'editando_index' not in st.session_state:
+        st.session_state.editando_index = None
 
 def anadir_a_resumen():
     if st.session_state.get('cortina_calculada'):
-        st.session_state.cortinas_resumen.append(st.session_state.cortina_calculada)
-        st.success("¡Cortina añadida a la cotización!")
+        if st.session_state.get('editando_index') is not None:
+            index = st.session_state.editando_index
+            st.session_state.cortinas_resumen[index] = st.session_state.cortina_calculada
+            st.session_state.editando_index = None
+            st.session_state.cortina_a_editar = None
+            st.success("¡Cortina actualizada en la cotización!")
+        else:
+            st.session_state.cortinas_resumen.append(st.session_state.cortina_calculada)
+            st.success("¡Cortina añadida a la cotización!")
+        st.session_state.cortina_calculada = None
 
 def sidebar():
     with st.sidebar:
@@ -237,19 +251,46 @@ def sidebar():
 
         if st.button("Crear Cortina", use_container_width=True):
             st.session_state.editando_index = None
+            st.session_state.cortina_a_editar = None
             st.session_state.pagina_actual = 'cotizador'; st.rerun()
         if st.button("Datos de la Cotización", use_container_width=True):
             st.session_state.pagina_actual = 'datos'; st.rerun()
         if st.button("Ver Cotización", use_container_width=True):
             st.session_state.pagina_actual = 'resumen'; st.rerun()
 
-# Reemplaza la función pantalla_cotizador() con este código
 def pantalla_cotizador():
     st.header("Crea la Cortina")
+    
+    if 'cortina_a_editar' in st.session_state and st.session_state.cortina_a_editar is not None:
+        cortina_a_editar = st.session_state.cortina_a_editar
+        
+        st.subheader("Editando Cortina")
+        st.session_state['ancho'] = cortina_a_editar['ancho']
+        st.session_state['alto'] = cortina_a_editar['alto']
+        st.session_state['cantidad'] = cortina_a_editar['cantidad']
+        st.session_state['multiplicador'] = cortina_a_editar['multiplicador']
+        st.session_state['tipo_cortina_sel'] = cortina_a_editar['tipo']
+        st.session_state['diseno_sel'] = cortina_a_editar['diseno']
+        
+        if 'tela1' in cortina_a_editar['telas']:
+            st.session_state[f"tipo_tela_sel_1"] = cortina_a_editar['telas']['tela1'].get('tipo')
+            st.session_state[f"ref_tela_sel_1"] = cortina_a_editar['telas']['tela1'].get('referencia')
+            st.session_state[f"color_tela_sel_1"] = cortina_a_editar['telas']['tela1'].get('color')
+            st.session_state[f"pvp_tela_1"] = cortina_a_editar['telas']['tela1'].get('pvp')
+        if 'tela2' in cortina_a_editar['telas'] and cortina_a_editar['telas']['tela2'] is not None:
+            st.session_state[f"tipo_tela_sel_2"] = cortina_a_editar['telas']['tela2'].get('tipo')
+            st.session_state[f"ref_tela_sel_2"] = cortina_a_editar['telas']['tela2'].get('referencia')
+            st.session_state[f"color_tela_sel_2"] = cortina_a_editar['telas']['tela2'].get('color')
+            st.session_state[f"pvp_tela_2"] = cortina_a_editar['telas']['tela2'].get('pvp')
+        if 'insumos_seleccion' in cortina_a_editar:
+            st.session_state.insumos_seleccion = cortina_a_editar['insumos_seleccion']
+
+        st.session_state.cortina_a_editar = None
+
     st.subheader("1. Medidas")
-    ancho = st.number_input("Ancho de la Ventana (m)", min_value=0.1, value=2.0, step=0.1, key="ancho")
-    alto = st.number_input("Alto de la Cortina (m)", min_value=0.1, value=2.0, step=0.1, key="alto")
-    cantidad_cortinas = st.number_input("Cantidad (und)", min_value=1, value=1, step=1, key="cantidad")
+    ancho = st.number_input("Ancho de la Ventana (m)", min_value=0.1, value=st.session_state.get("ancho", 2.0), step=0.1, key="ancho")
+    alto = st.number_input("Alto de la Cortina (m)", min_value=0.1, value=st.session_state.get("alto", 2.0), step=0.1, key="alto")
+    cantidad_cortinas = st.number_input("Cantidad (und)", min_value=1, value=st.session_state.get("cantidad", 1), step=1, key="cantidad")
     st.markdown("---")
     st.subheader("2. Selecciona el Diseño")
 
@@ -262,22 +303,17 @@ def pantalla_cotizador():
         st.error("No hay diseños disponibles para el tipo seleccionado.")
         st.stop()
     
-    # Guardamos el diseño previo para compararlo
     diseno_previo = st.session_state.get("diseno_sel", disenos_disponibles[0])
     if diseno_previo not in disenos_disponibles:
         diseno_previo = disenos_disponibles[0]
     
     diseno_sel = st.selectbox("Diseño", options=disenos_disponibles, index=disenos_disponibles.index(diseno_previo), key="diseno_sel")
     
-    # --- AÑADIMOS LA LÓGICA PARA REINICIAR LAS SELECCIONES AL CAMBIAR EL DISEÑO ---
-    # Limpia la selección de insumos si el diseño ha cambiado
     if diseno_sel != st.session_state.get('last_diseno_sel'):
         st.session_state.insumos_seleccion = {}
         st.session_state.last_diseno_sel = diseno_sel
     
-    # Actualiza el estado del diseño previo para el próximo rerun
     st.session_state.last_diseno_sel = diseno_sel
-    # -----------------------------------------------------------------------------
 
     valor_multiplicador = float(TABLA_DISENOS.get(diseno_sel, 2.0))
     multiplicador = st.number_input("Multiplicador", min_value=1.0, value=valor_multiplicador, step=0.1, key="multiplicador")
@@ -299,20 +335,20 @@ def pantalla_cotizador():
             st.error("No se pudo cargar el catálogo de telas.")
             return
 
-        tipo = st.selectbox(f"Tipo de Tela {prefix}", options=list(CATALOGO_TELAS.keys()), key=tipo_key)
+        tipo = st.selectbox(f"Tipo de Tela {prefix}", options=list(CATALOGO_TELAS.keys()), key=tipo_key, index=list(CATALOGO_TELAS.keys()).index(st.session_state.get(tipo_key, list(CATALOGO_TELAS.keys())[0])))
         if not tipo or tipo not in CATALOGO_TELAS:
             st.warning(f"No hay tipos de tela disponibles.")
             return
 
         referencias = list(CATALOGO_TELAS[tipo].keys())
-        ref = st.selectbox(f"Referencia {prefix}", options=referencias, key=ref_key)
+        ref = st.selectbox(f"Referencia {prefix}", options=referencias, key=ref_key, index=referencias.index(st.session_state.get(ref_key, referencias[0])))
 
         if not ref or ref not in CATALOGO_TELAS[tipo]:
             st.warning(f"No hay referencias disponibles para el tipo '{tipo}'.")
             return
 
         colores = [x["color"] for x in CATALOGO_TELAS[tipo][ref]]
-        color = st.selectbox(f"Color {prefix}", options=colores, key=color_key)
+        color = st.selectbox(f"Color {prefix}", options=colores, key=color_key, index=colores.index(st.session_state.get(color_key, colores[0])))
 
         if not color:
             st.warning("No hay colores disponibles.")
@@ -326,7 +362,8 @@ def pantalla_cotizador():
             st.warning("Información de precio no encontrada.")
             st.session_state[pvp_key] = 0.0
 
-        st.radio(f"Modo de confección {prefix}", options=["Entera", "Partida", "Semipartida"], horizontal=True, key=modo_key)
+        st.radio(f"Modo de confección {prefix}", options=["Entera", "Partida", "Semipartida"], horizontal=True, key=modo_key, index=["Entera", "Partida", "Semipartida"].index(st.session_state.get(modo_key, "Entera")))
+
 
     items_d = BOM_DICT.get(diseno_sel, [])
     usa_tela2 = any(i["Insumo"].strip().upper() == "TELA 2" for i in items_d)
@@ -381,9 +418,9 @@ def mostrar_insumos_bom(diseno_sel: str):
                 refs = sorted(list({opt['ref'] for opt in cat['opciones']}))
                 ref_key = f"ref_{nombre}"
                 color_key = f"color_{nombre}"
-                ref_sel = st.selectbox(f"Referencia {nombre}", options=refs, key=ref_key)
+                ref_sel = st.selectbox(f"Referencia {nombre}", options=refs, key=ref_key, index=refs.index(st.session_state.get(ref_key, refs[0])))
                 colores = sorted(list({opt['color'] for opt in cat['opciones'] if opt['ref'] == ref_sel}))
-                color_sel = st.selectbox(f"Color {nombre}", options=colores, key=color_key)
+                color_sel = st.selectbox(f"Color {nombre}", options=colores, key=color_key, index=colores.index(st.session_state.get(color_key, colores[0])))
                 insumo_info = next(opt for opt in cat['opciones'] if opt['ref'] == ref_sel and opt['color'] == color_sel)
                 st.text_input(f"P.V.P {nombre} ({cat['unidad']})", value=f"${int(insumo_info['pvp']):,}", disabled=True)
                 st.session_state.setdefault("insumos_seleccion", {})
@@ -545,33 +582,56 @@ def pantalla_resumen():
     if not st.session_state.cortinas_resumen:
         st.info("Aún no has añadido ninguna cortina a la cotización.")
     else:
+        if 'seleccion_resumen' not in st.session_state:
+            st.session_state.seleccion_resumen = -1
+
         for i, cortina in enumerate(st.session_state.cortinas_resumen):
             with st.container(border=True):
-                col_izq, col_cen, col_der = st.columns([2, 3, 1])
-                
-                ancho_calc = cortina['ancho'] * cortina['multiplicador']
-                col_izq.markdown(f"**Dimensiones:** {ancho_calc:.2f} × {cortina['alto']:.2f} m")
-                col_izq.markdown(f"**Cantidad:** {cortina['cantidad']} und")
+                col_info, col_btn = st.columns([6, 1])
 
-                col_cen.markdown(f"**{cortina['diseno']}**")
-                
-                if cortina['telas']['tela1']:
-                    tela1_info = cortina['telas']['tela1']
-                    tela1_str = f"Tela 1: {tela1_info['referencia']} - {tela1_info['color']}"
-                    col_cen.markdown(f"• {tela1_str}")
-                
-                if cortina['telas'].get('tela2') and cortina['telas']['tela2'].get('referencia'):
-                    tela2_info = cortina['telas']['tela2']
-                    tela2_str = f"Tela 2: {tela2_info['referencia']} - {tela2_info['color']}"
-                    col_cen.markdown(f"• {tela2_str}")
-                
-                insumos_sel = cortina.get('insumos_seleccion', {})
-                if insumos_sel:
-                    for insumo, info in insumos_sel.items():
-                        col_cen.markdown(f"• {insumo}: {info['ref']} - {info['color']}")
+                with col_info:
+                    content_html = f"""
+                    <div style="cursor:pointer; width:100%;">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <div style="display:flex; flex-direction:column; gap: 0.5rem;">
+                                <div><b>Dimensiones:</b> {cortina['ancho'] * cortina['multiplicador']:.2f} × {cortina['alto']:.2f} m</div>
+                                <div><b>Cantidad:</b> {cortina['cantidad']} und</div>
+                            </div>
+                            <div style="display:flex; flex-direction:column; align-items:flex-start; gap: 0.5rem; text-align:left;">
+                                <b>{cortina['diseno']}</b>
+                                <div>• Tela 1: {cortina['telas']['tela1']['referencia']} - {cortina['telas']['tela1']['color']}</div>
+                                {'<div>• Tela 2: ' + cortina['telas']['tela2']['referencia'] + ' - ' + cortina['telas']['tela2']['color'] + '</div>' if cortina['telas'].get('tela2') and cortina['telas']['tela2'].get('referencia') else ''}
+                                {'' .join([f"<div>• {insumo}: {info['ref']} - {info['color']}</div>" for insumo, info in cortina.get('insumos_seleccion', {}).items()])}
+                            </div>
+                            <div style="text-align:right;">
+                                <b>${int(cortina['total']):,}</b>
+                            </div>
+                        </div>
+                    </div>
+                    """
+                    st.markdown(content_html, unsafe_allow_html=True)
 
-                col_der.markdown(f"<p style='text-align:right;'>${int(cortina['total']):,}</p>", unsafe_allow_html=True)
+                if col_btn.button('⚙️', key=f'select_btn_{i}'):
+                    if st.session_state.seleccion_resumen == i:
+                        st.session_state.seleccion_resumen = -1
+                    else:
+                        st.session_state.seleccion_resumen = i
+
+                if st.session_state.seleccion_resumen == i:
+                    acc_col1, acc_col2 = st.columns([1,1])
+                    if acc_col1.button('✏️', key=f'edit_btn_{i}'):
+                        st.session_state.cortina_a_editar = cortina
+                        st.session_state.editando_index = i
+                        st.session_state.pagina_actual = 'cotizador'
+                        st.rerun()
+
+                    if acc_col2.button('🗑️', key=f'delete_btn_{i}'):
+                        del st.session_state.cortinas_resumen[i]
+                        st.session_state.seleccion_resumen = -1
+                        st.rerun()
                 
+                st.markdown("---")
+
     total_final = sum(c['total'] for c in st.session_state.cortinas_resumen)
     iva = total_final * IVA_PERCENT
     subtotal = total_final - iva
@@ -671,5 +731,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-

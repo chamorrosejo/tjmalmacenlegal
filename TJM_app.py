@@ -570,7 +570,7 @@ def pantalla_resumen():
                     for insumo, info in insumos_sel.items():
                         col_cen.markdown(f"• {insumo}: {info['ref']} - {info['color']}")
 
-                col_der.markdown(f"<p style='text-align:right;'>**${int(cortina['total']):,}**</p>", unsafe_allow_html=True)
+                col_der.markdown(f"<p style='text-align:right;'>${int(cortina['total']):,}</p>", unsafe_allow_html=True)
                 
     total_final = sum(c['total'] for c in st.session_state.cortinas_resumen)
     iva = total_final * IVA_PERCENT
@@ -671,4 +671,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 

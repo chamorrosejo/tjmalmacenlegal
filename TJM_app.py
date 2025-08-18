@@ -328,9 +328,14 @@ def pantalla_cotizador():
     st.subheader("Insumos de la Cortina")
     mostrar_insumos_bom(diseno_sel)
 
+    # Creamos dos columnas para los botones
     btn_col1, btn_col2 = st.columns([0.5, 0.5])
-    btn_col1.button("Calcular Cotización", type="primary")
 
+    # Se corrige la lógica para que el botón active la función
+    if btn_col1.button("Calcular Cotización", type="primary"):
+        calcular_y_mostrar_cotizacion()
+
+    # Muestra el botón 'Añadir a la Cotización' solo si ya se ha hecho un cálculo
     if st.session_state.get('cortina_calculada'):
         btn_col2.button("Añadir a la Cotización", on_click=anadir_a_resumen)
 
@@ -350,7 +355,6 @@ def pantalla_cotizador():
         c1.metric("Subtotal Cortina", f"${int(st.session_state.cortina_calculada['subtotal']):,}")
         c2.metric("IVA Cortina", f"${int(st.session_state.cortina_calculada['iva']):,}")
         c3.metric("Total Cortina", f"${int(st.session_state.cortina_calculada['total']):,}")
-
 
 def mostrar_insumos_bom(diseno_sel: str):
     items = [it for it in BOM_DICT.get(diseno_sel, []) if it["DependeDeSeleccion"] == "SI"]
@@ -636,3 +640,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

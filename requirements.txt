@@ -1,4 +1,6 @@
 streamlit
 pandas
-fpdf2
 openpyxl
+xlsxwriter
+fpdf
+Pillow

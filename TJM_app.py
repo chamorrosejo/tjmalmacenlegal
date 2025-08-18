@@ -6,6 +6,7 @@ from datetime import datetime
 import math
 import io
 import xlsxwriter
+import copy # Importamos la biblioteca copy
 
 # =======================
 # Helpers
@@ -239,6 +240,13 @@ def anadir_a_resumen():
             st.success("¡Cortina añadida a la cotización!")
         st.session_state.cortina_calculada = None
 
+def duplicar_cortina(index):
+    cortina_a_duplicar = st.session_state.cortinas_resumen[index]
+    # Usamos deepcopy para asegurarnos de que la copia sea independiente de la original
+    cortina_duplicada = copy.deepcopy(cortina_a_duplicar)
+    st.session_state.cortinas_resumen.append(cortina_duplicada)
+    st.success("¡Cortina duplicada y añadida al resumen!")
+
 def sidebar():
     with st.sidebar:
         st.image("logo.png") 
@@ -335,20 +343,25 @@ def pantalla_cotizador():
             st.error("No se pudo cargar el catálogo de telas.")
             return
 
-        tipo = st.selectbox(f"Tipo de Tela {prefix}", options=list(CATALOGO_TELAS.keys()), key=tipo_key, index=list(CATALOGO_TELAS.keys()).index(st.session_state.get(tipo_key, list(CATALOGO_TELAS.keys())[0])))
+        tipo_options = list(CATALOGO_TELAS.keys())
+        tipo_default_index = tipo_options.index(st.session_state.get(tipo_key, tipo_options[0]))
+        tipo = st.selectbox(f"Tipo de Tela {prefix}", options=tipo_options, key=tipo_key, index=tipo_default_index)
+        
         if not tipo or tipo not in CATALOGO_TELAS:
             st.warning(f"No hay tipos de tela disponibles.")
             return
 
         referencias = list(CATALOGO_TELAS[tipo].keys())
-        ref = st.selectbox(f"Referencia {prefix}", options=referencias, key=ref_key, index=referencias.index(st.session_state.get(ref_key, referencias[0])))
+        ref_default_index = referencias.index(st.session_state.get(ref_key, referencias[0]))
+        ref = st.selectbox(f"Referencia {prefix}", options=referencias, key=ref_key, index=ref_default_index)
 
         if not ref or ref not in CATALOGO_TELAS[tipo]:
             st.warning(f"No hay referencias disponibles para el tipo '{tipo}'.")
             return
 
         colores = [x["color"] for x in CATALOGO_TELAS[tipo][ref]]
-        color = st.selectbox(f"Color {prefix}", options=colores, key=color_key, index=colores.index(st.session_state.get(color_key, colores[0])))
+        color_default_index = colores.index(st.session_state.get(color_key, colores[0]))
+        color = st.selectbox(f"Color {prefix}", options=colores, key=color_key, index=color_default_index)
 
         if not color:
             st.warning("No hay colores disponibles.")
@@ -361,9 +374,10 @@ def pantalla_cotizador():
         else:
             st.warning("Información de precio no encontrada.")
             st.session_state[pvp_key] = 0.0
-
-        st.radio(f"Modo de confección {prefix}", options=["Entera", "Partida", "Semipartida"], horizontal=True, key=modo_key, index=["Entera", "Partida", "Semipartida"].index(st.session_state.get(modo_key, "Entera")))
-
+            
+        modo_options = ["Entera", "Partida", "Semipartida"]
+        modo_default_index = modo_options.index(st.session_state.get(modo_key, "Entera"))
+        st.radio(f"Modo de confección {prefix}", options=modo_options, horizontal=True, key=modo_key, index=modo_default_index)
 
     items_d = BOM_DICT.get(diseno_sel, [])
     usa_tela2 = any(i["Insumo"].strip().upper() == "TELA 2" for i in items_d)
@@ -418,9 +432,15 @@ def mostrar_insumos_bom(diseno_sel: str):
                 refs = sorted(list({opt['ref'] for opt in cat['opciones']}))
                 ref_key = f"ref_{nombre}"
                 color_key = f"color_{nombre}"
-                ref_sel = st.selectbox(f"Referencia {nombre}", options=refs, key=ref_key, index=refs.index(st.session_state.get(ref_key, refs[0])))
+                
+                # Carga de valores por defecto para edición
+                ref_default_index = refs.index(st.session_state.get(ref_key, refs[0]))
+                ref_sel = st.selectbox(f"Referencia {nombre}", options=refs, key=ref_key, index=ref_default_index)
+                
                 colores = sorted(list({opt['color'] for opt in cat['opciones'] if opt['ref'] == ref_sel}))
-                color_sel = st.selectbox(f"Color {nombre}", options=colores, key=color_key, index=colores.index(st.session_state.get(color_key, colores[0])))
+                color_default_index = colores.index(st.session_state.get(color_key, colores[0]))
+                color_sel = st.selectbox(f"Color {nombre}", options=colores, key=color_key, index=color_default_index)
+                
                 insumo_info = next(opt for opt in cat['opciones'] if opt['ref'] == ref_sel and opt['color'] == color_sel)
                 st.text_input(f"P.V.P {nombre} ({cat['unidad']})", value=f"${int(insumo_info['pvp']):,}", disabled=True)
                 st.session_state.setdefault("insumos_seleccion", {})
@@ -562,8 +582,6 @@ def pantalla_datos():
         vendedor['nombre'] = st.text_input("Nombre Vendedor:", value=vendedor.get('nombre', ''))
         vendedor['telefono'] = st.text_input("Teléfono Vendedor:", value=vendedor.get('telefono', ''))
 
-# Reemplaza la función pantalla_resumen() con este código
-# Reemplaza la función pantalla_resumen() con este código
 def pantalla_resumen():
     st.header("Resumen de la Cotización")
     cliente = st.session_state.datos_cotizacion['cliente']
@@ -597,21 +615,18 @@ def pantalla_resumen():
 
                 col_cen.markdown(f"**{cortina['diseno']}**")
                 
-                # --- Lógica de la Tela 1 con el modo de confección ---
                 if cortina['telas']['tela1']:
                     tela1_info = cortina['telas']['tela1']
                     tela1_str = f"Tela 1: {tela1_info['referencia']} - {tela1_info['color']} **[{tela1_info['modo_confeccion']}]**"
                     col_cen.markdown(f"• {tela1_str}")
                 
-                # --- Lógica de la Tela 2 con el modo de confección ---
                 if cortina['telas'].get('tela2') and cortina['telas']['tela2'].get('referencia'):
                     tela2_info = cortina['telas']['tela2']
                     tela2_str = f"Tela 2: {tela2_info['referencia']} - {tela2_info['color']} **[{tela2_info['modo_confeccion']}]**"
                     col_cen.markdown(f"• {tela2_str}")
                 
-                # Información de los Insumos Adicionales
                 insumos_sel = cortina.get('insumos_seleccion', {})
-                if insumos_sel:
+                    if insumos_sel:
                     for insumo, info in insumos_sel.items():
                         col_cen.markdown(f"• {insumo}: {info['ref']} - {info['color']}")
 
@@ -625,7 +640,7 @@ def pantalla_resumen():
 
                 if st.session_state.seleccion_resumen == i:
                     st.markdown("---")
-                    acc_col1, acc_col2 = st.columns([1,1])
+                    acc_col1, acc_col2, acc_col3 = st.columns([1,1,1])
                     if acc_col1.button('✏️ Editar', key=f'edit_btn_{i}', use_container_width=True):
                         st.session_state.cortina_a_editar = cortina
                         st.session_state.editando_index = i
@@ -634,6 +649,11 @@ def pantalla_resumen():
 
                     if acc_col2.button('🗑️ Eliminar', key=f'delete_btn_{i}', use_container_width=True):
                         del st.session_state.cortinas_resumen[i]
+                        st.session_state.seleccion_resumen = -1
+                        st.rerun()
+
+                    if acc_col3.button('📋 Duplicar', key=f'dup_btn_{i}', use_container_width=True):
+                        duplicar_cortina(i)
                         st.session_state.seleccion_resumen = -1
                         st.rerun()
                 
@@ -645,6 +665,7 @@ def pantalla_resumen():
     c1.metric("Subtotal", f"${int(subtotal):,}")
     c2.metric(f"IVA ({IVA_PERCENT:.0%})", f"${int(iva):,}")
     c3.metric("Total Cotización", f"${int(total_final):,}")
+
 # --- PANTALLA DE GESTIÓN DE DATOS ---
 def create_template_excel(column_names: list, sheet_name: str = "Plantilla"):
     """
@@ -735,5 +756,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-

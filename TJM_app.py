@@ -40,7 +40,7 @@ _default_cat_tel = os.path.join(SCRIPT_DIR, "data", "catalogo_telas.xlsx")
 DESIGNS_XLSX_PATH      = os.environ.get("DESIGNS_XLSX_PATH")       or st.secrets.get("DESIGNS_XLSX_PATH", _default_designs)
 BOM_XLSX_PATH          = os.environ.get("BOM_XLSX_PATH")           or st.secrets.get("BOM_XLSX_PATH", _default_bom)
 CATALOG_XLSX_PATH      = os.environ.get("CATALOG_XLSX_PATH")       or st.secrets.get("CATALOG_XLSX_PATH", _default_cat_ins)
-CATALOGO_TELAS_XLSX_PATH = (os.environ.get("CATALOGO_TELAS_XLSX_PATH")    or st.secrets.get("CATALOGO_TELAS_XLSX_PATH", _default_cat_tel))
+CATALOG_TELAS_XLSX_PATH = (os.environ.get("CATALOG_TELAS_XLSX_PATH") or st.secrets.get("CATALOG_TELAS_XLSX_PATH", _default_cat_tel))
 
 REQUIRED_DESIGNS_COLS = ["Diseño", "Tipo", "Multiplicador", "PVP M.O."]
 REQUIRED_BOM_COLS     = ["Diseño", "Insumo", "Unidad", "ReglaCantidad", "Parametro", "DependeDeSeleccion", "Observaciones"]
@@ -112,7 +112,7 @@ def load_bom_from_excel(path: str):
     bom_dict = {}
     for _, row in df.iterrows():
         p_raw = row.get("Parametro", "")
-        if pd.isna(p_raw) or (isinstance(p_raw, str) and p_raw.strip().lower() in ("", "nan", "none")):
+        if pd.isna(p_raw) or (isinstance(p_raw, str) and p.strip().lower() in ("", "nan", "none")):
             param_norm = ""
         else:
             param_norm = str(p_raw).strip()
@@ -157,7 +157,7 @@ def load_catalog_from_excel(path: str):
 @st.cache_data(show_spinner="Cargando catálogo de telas...")
 def load_telas_from_excel(path: str):
     if not os.path.exists(path):
-        st.error(f"No se encontró el catálogo de telas en: {path}")
+        st.error(f"No se encontró el archivo Excel de Telas en: {path}")
         st.stop()
     df = pd.read_excel(path, engine="openpyxl")
     
@@ -209,7 +209,7 @@ st.set_page_config(page_title="Almacén Legal Cotizador", page_icon="logo.png", 
 TABLA_DISENOS, TIPOS_CORTINA, PRECIOS_MANO_DE_OBRA, DISENOS_A_TIPOS, DF_DISENOS = load_designs_from_excel(DESIGNS_XLSX_PATH)
 BOM_DICT, DF_BOM = load_bom_from_excel(BOM_XLSX_PATH)
 CATALOGO_INSUMOS = load_catalog_from_excel(CATALOG_XLSX_PATH)
-CATALOGO_TELAS = load_telas_from_excel(CATALOGO_TELAS_XLSX_PATH)
+CATALOGO_TELAS = load_telas_from_excel(CATALOG_TELAS_XLSX_PATH)
 
 def init_state():
     if 'pagina_actual' not in st.session_state:
@@ -783,5 +783,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-

@@ -562,6 +562,7 @@ def pantalla_datos():
         vendedor['nombre'] = st.text_input("Nombre Vendedor:", value=vendedor.get('nombre', ''))
         vendedor['telefono'] = st.text_input("Teléfono Vendedor:", value=vendedor.get('telefono', ''))
 
+# Reemplaza la función pantalla_resumen() con este código
 def pantalla_resumen():
     st.header("Resumen de la Cotización")
     cliente = st.session_state.datos_cotizacion['cliente']
@@ -587,51 +588,60 @@ def pantalla_resumen():
 
         for i, cortina in enumerate(st.session_state.cortinas_resumen):
             with st.container(border=True):
-                col_info, col_btn = st.columns([6, 1])
+                # Usamos una estructura de columnas para mostrar la información principal y el botón de configuración
+                col_izq, col_cen, col_der, col_gear = st.columns([2, 3, 1.5, 0.5])
+                
+                # --- Columna Izquierda (Dimensiones y Cantidad) ---
+                ancho_calc = cortina['ancho'] * cortina['multiplicador']
+                col_izq.markdown(f"**Dimensiones:** {ancho_calc:.2f} × {cortina['alto']:.2f} m")
+                col_izq.markdown(f"**Cantidad:** {cortina['cantidad']} und")
 
-                with col_info:
-                    content_html = f"""
-                    <div style="cursor:pointer; width:100%;">
-                        <div style="display:flex; justify-content:space-between; align-items:center;">
-                            <div style="display:flex; flex-direction:column; gap: 0.5rem;">
-                                <div><b>Dimensiones:</b> {cortina['ancho'] * cortina['multiplicador']:.2f} × {cortina['alto']:.2f} m</div>
-                                <div><b>Cantidad:</b> {cortina['cantidad']} und</div>
-                            </div>
-                            <div style="display:flex; flex-direction:column; align-items:flex-start; gap: 0.5rem; text-align:left;">
-                                <b>{cortina['diseno']}</b>
-                                <div>• Tela 1: {cortina['telas']['tela1']['referencia']} - {cortina['telas']['tela1']['color']}</div>
-                                {'<div>• Tela 2: ' + cortina['telas']['tela2']['referencia'] + ' - ' + cortina['telas']['tela2']['color'] + '</div>' if cortina['telas'].get('tela2') and cortina['telas']['tela2'].get('referencia') else ''}
-                                {'' .join([f"<div>• {insumo}: {info['ref']} - {info['color']}</div>" for insumo, info in cortina.get('insumos_seleccion', {}).items()])}
-                            </div>
-                            <div style="text-align:right;">
-                                <b>${int(cortina['total']):,}</b>
-                            </div>
-                        </div>
-                    </div>
-                    """
-                    st.markdown(content_html, unsafe_allow_html=True)
+                # --- Columna Central (Diseño e Insumos) ---
+                col_cen.markdown(f"**{cortina['diseno']}**")
+                
+                # Información de la Tela 1
+                if cortina['telas']['tela1']:
+                    tela1_info = cortina['telas']['tela1']
+                    tela1_str = f"Tela 1: {tela1_info['referencia']} - {tela1_info['color']}"
+                    col_cen.markdown(f"• {tela1_str}")
+                
+                # Información de la Tela 2 (solo si se seleccionó una)
+                if cortina['telas'].get('tela2') and cortina['telas']['tela2'].get('referencia'):
+                    tela2_info = cortina['telas']['tela2']
+                    tela2_str = f"Tela 2: {tela2_info['referencia']} - {tela2_info['color']}"
+                    col_cen.markdown(f"• {tela2_str}")
+                
+                # Información de los Insumos Adicionales
+                insumos_sel = cortina.get('insumos_seleccion', {})
+                if insumos_sel:
+                    for insumo, info in insumos_sel.items():
+                        col_cen.markdown(f"• {insumo}: {info['ref']} - {info['color']}")
+                
+                # --- Columna Derecha (Valor Total) ---
+                col_der.markdown(f"**${int(cortina['total']):,}**")
 
-                if col_btn.button('⚙️', key=f'select_btn_{i}'):
+                # --- Botón de Configuración ---
+                if col_gear.button('⚙️', key=f'select_btn_{i}'):
                     if st.session_state.seleccion_resumen == i:
                         st.session_state.seleccion_resumen = -1
                     else:
                         st.session_state.seleccion_resumen = i
 
+                # Si este es el contenedor seleccionado, mostramos los botones de acción debajo
                 if st.session_state.seleccion_resumen == i:
+                    st.markdown("---")
                     acc_col1, acc_col2 = st.columns([1,1])
-                    if acc_col1.button('✏️', key=f'edit_btn_{i}'):
+                    if acc_col1.button('✏️ Editar', key=f'edit_btn_{i}', use_container_width=True):
                         st.session_state.cortina_a_editar = cortina
                         st.session_state.editando_index = i
                         st.session_state.pagina_actual = 'cotizador'
                         st.rerun()
 
-                    if acc_col2.button('🗑️', key=f'delete_btn_{i}'):
+                    if acc_col2.button('🗑️ Eliminar', key=f'delete_btn_{i}', use_container_width=True):
                         del st.session_state.cortinas_resumen[i]
                         st.session_state.seleccion_resumen = -1
                         st.rerun()
                 
-                st.markdown("---")
-
     total_final = sum(c['total'] for c in st.session_state.cortinas_resumen)
     iva = total_final * IVA_PERCENT
     subtotal = total_final - iva
@@ -731,3 +741,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

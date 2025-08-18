@@ -112,7 +112,7 @@ def load_bom_from_excel(path: str):
     bom_dict = {}
     for _, row in df.iterrows():
         p_raw = row.get("Parametro", "")
-        if pd.isna(p_raw) or (isinstance(p_raw, str) and p.strip().lower() in ("", "nan", "none")):
+        if pd.isna(p_raw) or (isinstance(p_raw, str) and p_raw.strip().lower() in ("", "nan", "none")):
             param_norm = ""
         else:
             param_norm = str(p_raw).strip()
@@ -688,6 +688,17 @@ def pantalla_resumen():
     iva = total_final * IVA_PERCENT
     subtotal = total_final - iva
     st.markdown("---")
+    
+    if st.session_state.cortinas_resumen:
+        pdf_data = generar_pdf_cotizacion()
+        st.download_button(
+            label="Generar PDF de Cotización",
+            data=pdf_data,
+            file_name="cotizacion.pdf",
+            mime="application/pdf",
+            use_container_width=True
+        )
+
     c1, c2, c3 = st.columns(3)
     c1.metric("Subtotal", f"${int(subtotal):,}")
     c2.metric(f"IVA ({IVA_PERCENT:.0%})", f"${int(iva):,}")

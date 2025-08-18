@@ -321,7 +321,7 @@ def pantalla_cotizador():
         ui_tela("2")
 
     st.markdown("---")
-    st.subheader("4. Insumos de la Cortina")
+    st.subheader("Insumos de la Cortina")
     mostrar_insumos_bom(diseno_sel)
 
     if st.button("Calcular Cotización", type="primary"):
@@ -329,11 +329,16 @@ def pantalla_cotizador():
 
     if st.session_state.get('cortina_calculada'):
         st.success("Cálculo realizado. Revisa los detalles a continuación.")
+        
         df_detalle = pd.DataFrame(st.session_state.cortina_calculada['detalle_insumos'])
-        df_detalle['P.V.P/Unit ($)'] = df_detalle['P.V.P/Unit ($)'].apply(lambda x: f"${int(x):,}")
-        df_detalle['Precio ($)'] = df_detalle['Precio ($)'].apply(lambda x: f"${int(x):,}")
+        
+        df_detalle['Vr. Unit'] = df_detalle['P.V.P/Unit ($)'].apply(lambda x: f"${int(x):,}")
+        df_detalle['Vr. Total'] = df_detalle['Precio ($)'].apply(lambda x: f"${int(x):,}")
 
-        st.dataframe(df_detalle, use_container_width=True, hide_index=True)
+        nuevo_orden = ['Cantidad', 'Unidad', 'Insumo', 'Vr. Unit', 'Vr. Total']
+        
+        st.dataframe(df_detalle[nuevo_orden], use_container_width=True, hide_index=True)
+        
         c1, c2, c3 = st.columns(3)
         c1.metric("Subtotal Cortina", f"${int(st.session_state.cortina_calculada['subtotal']):,}")
         c2.metric("IVA Cortina", f"${int(st.session_state.cortina_calculada['iva']):,}")
@@ -534,7 +539,7 @@ def pantalla_resumen():
     c2.metric(f"IVA ({IVA_PERCENT:.0%})", f"${int(iva):,}")
     c3.metric("Total Cotización", f"${int(total_final):,}")
 
-# --- NUEVA PANTALLA DE GESTIÓN DE DATOS ---
+# --- PANTALLA DE GESTIÓN DE DATOS ---
 def create_template_excel(column_names: list, sheet_name: str = "Plantilla"):
     """
     Crea un archivo Excel en memoria con solo los encabezados de las columnas.
@@ -558,7 +563,6 @@ def pantalla_gestion_datos():
     
     st.markdown("---")
 
-    # --- 1. Diseños ---
     st.subheader("1. Plantilla de Diseños")
     st.markdown("Columnas requeridas: `Diseño`, `Tipo`, `Multiplicador`, `PVP M.O.`")
     template_buffer_designs = create_template_excel(REQUIRED_DESIGNS_COLS, "Diseños")
@@ -571,7 +575,6 @@ def pantalla_gestion_datos():
     )
     st.markdown("---")
     
-    # --- 2. BOM ---
     st.subheader("2. Plantilla de BOM")
     st.markdown("Columnas requeridas: `Diseño`, `Insumo`, `Unidad`, `ReglaCantidad`, `Parametro`, `DependeDeSeleccion`, `Observaciones`")
     template_buffer_bom = create_template_excel(REQUIRED_BOM_COLS, "BOM")
@@ -584,7 +587,6 @@ def pantalla_gestion_datos():
     )
     st.markdown("---")
     
-    # --- 3. Catálogo de Insumos ---
     st.subheader("3. Plantilla de Catálogo de Insumos")
     st.markdown("Columnas requeridas: `Insumo`, `Unidad`, `Ref`, `Color`, `PVP`")
     template_buffer_insumos = create_template_excel(REQUIRED_CAT_COLS, "Catalogo_Insumos")
@@ -597,7 +599,6 @@ def pantalla_gestion_datos():
     )
     st.markdown("---")
     
-    # --- 4. Catálogo de Telas ---
     st.subheader("4. Plantilla de Catálogo de Telas")
     st.markdown("Columnas requeridas: `TipoTela`, `Referencia`, `Color`, `PVP/Metro ($)`")
     template_buffer_telas = create_template_excel(REQUIRED_TELAS_COLS, "Catalogo_Telas")
@@ -628,5 +629,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-

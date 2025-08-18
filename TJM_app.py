@@ -5,6 +5,7 @@ from fpdf import FPDF
 from datetime import datetime
 import math
 import io
+import xlsxwriter
 
 # =======================
 # Helpers
@@ -43,7 +44,7 @@ CATALOG_TELAS_XLSX_PATH= os.environ.get("CATALOG_TELAS_XLSX_PATH") or st.secrets
 REQUIRED_DESIGNS_COLS = ["Diseño", "Tipo", "Multiplicador", "PVP M.O."]
 REQUIRED_BOM_COLS     = ["Diseño", "Insumo", "Unidad", "ReglaCantidad", "Parametro", "DependeDeSeleccion", "Observaciones"]
 REQUIRED_CAT_COLS     = ["Insumo", "Unidad", "Ref", "Color", "PVP"]
-REQUIRED_TELAS_COLS   = ["TipoTela", "Referencia", "Color", "PVP/Metro ($)"]  # "Ancho (m)" y "Observaciones" opcionales
+REQUIRED_TELAS_COLS   = ["TipoTela", "Referencia", "Color", "PVP/Metro ($)"]
 
 ALLOWED_RULES = {"MT_ANCHO_X_MULT", "UND_OJALES_PAR", "UND_BOTON_PAR", "FIJO"}
 
@@ -54,12 +55,13 @@ DISTANCIA_OJALES_DEF = 0.14
 # =======================
 # Loading
 # =======================
-@st.cache_data(show_spinner="Cargando datos...")
+@st.cache_data(show_spinner="Cargando datos de diseños...")
 def load_designs_from_excel(path: str):
     if not os.path.exists(path):
         st.error(f"No se encontró el archivo Excel de Diseños en: {path}")
         st.stop()
     df = pd.read_excel(path, engine="openpyxl")
+    
     faltantes = [c for c in REQUIRED_DESIGNS_COLS if c not in df.columns]
     if faltantes:
         st.error(f"El Excel de Diseños debe tener columnas: {REQUIRED_DESIGNS_COLS}. Encontradas: {list(df.columns)}")
@@ -94,6 +96,7 @@ def load_bom_from_excel(path: str):
         st.error(f"No se encontró el archivo Excel de BOM en: {path}")
         st.stop()
     df = pd.read_excel(path, engine="openpyxl")
+    
     faltantes = [c for c in REQUIRED_BOM_COLS if c not in df.columns]
     if faltantes:
         st.error(f"El Excel de BOM debe tener columnas: {REQUIRED_BOM_COLS}. Encontradas: {list(df.columns)}")
@@ -131,6 +134,7 @@ def load_catalog_from_excel(path: str):
         st.warning(f"No se encontró el catálogo de insumos en: {path}. Solo se usarán TELA 1/2 y M.O.")
         return {}
     df = pd.read_excel(path, engine="openpyxl")
+    
     faltantes = [c for c in REQUIRED_CAT_COLS if c not in df.columns]
     if faltantes:
         st.error(f"El catálogo debe tener columnas: {REQUIRED_CAT_COLS}. Encontradas: {list(df.columns)}")
@@ -155,12 +159,12 @@ def load_telas_from_excel(path: str):
         st.error(f"No se encontró el catálogo de telas en: {path}")
         st.stop()
     df = pd.read_excel(path, engine="openpyxl")
+    
     faltantes = [c for c in REQUIRED_TELAS_COLS if c not in df.columns]
     if faltantes:
         st.error(f"El catálogo de telas debe tener columnas: {REQUIRED_TELAS_COLS}. Encontradas: {list(df.columns)}")
         st.stop()
 
-    # Build nested structure: {TipoTela: {Referencia: [{"color":..., "pvp":...}, ...]}}
     telas = {}
     for _, row in df.iterrows():
         tipo = str(row["TipoTela"]).strip()
@@ -220,15 +224,12 @@ def init_state():
 
 def sidebar():
     with st.sidebar:
-        # Agrega la imagen del logo y el título debajo
         st.image("logo.png") 
         st.title("Almacén Legal Cotizador")
         
-        # Ocultamos la info de los paths y ponemos el botón de gestión de datos
         if st.button("Gestión de Datos", use_container_width=True):
             st.session_state.pagina_actual = 'gestion_datos'; st.rerun()
-        if st.button("Recargar datos"):
-            st.cache_data.clear(); st.cache_resource.clear(); st.rerun()
+            
         st.divider()
 
         if st.button("Crear Cotización", use_container_width=True):
@@ -278,15 +279,36 @@ def pantalla_cotizador():
         pvp_key  = f"pvp_tela_{prefix}"
         modo_key = f"modo_conf_{prefix}"
 
+        if not CATALOGO_TELAS:
+            st.error("No se pudo cargar el catálogo de telas.")
+            return
+
         tipo = st.selectbox(f"Tipo de Tela {prefix}", options=list(CATALOGO_TELAS.keys()), key=tipo_key)
+        if not tipo or tipo not in CATALOGO_TELAS:
+            st.warning(f"No hay tipos de tela disponibles.")
+            return
+
         referencias = list(CATALOGO_TELAS[tipo].keys())
         ref = st.selectbox(f"Referencia {prefix}", options=referencias, key=ref_key)
+
+        if not ref or ref not in CATALOGO_TELAS[tipo]:
+            st.warning(f"No hay referencias disponibles para el tipo '{tipo}'.")
+            return
+
         colores = [x["color"] for x in CATALOGO_TELAS[tipo][ref]]
         color = st.selectbox(f"Color {prefix}", options=colores, key=color_key)
-        info = next(x for x in CATALOGO_TELAS[tipo][ref] if x["color"] == color)
-        
-        st.session_state[pvp_key] = info["pvp"]
-        st.text_input(f"PVP/Metro TELA {prefix} ($)", value=f"${int(info['pvp']):,}", disabled=True)
+
+        if not color:
+            st.warning("No hay colores disponibles.")
+            return
+
+        info = next((x for x in CATALOGO_TELAS[tipo][ref] if x["color"] == color), None)
+        if info:
+            st.session_state[pvp_key] = info["pvp"]
+            st.text_input(f"PVP/Metro TELA {prefix} ($)", value=f"${int(info['pvp']):,}", disabled=True)
+        else:
+            st.warning("Información de precio no encontrada.")
+            st.session_state[pvp_key] = 0.0
 
         st.radio(f"Modo de confección {prefix}", options=["Entera", "Partida", "Semipartida"], horizontal=True, key=modo_key)
 
@@ -354,14 +376,12 @@ def calcular_y_mostrar_cotizacion():
     detalle_insumos = []
     subtotal = 0.0
 
-    # Recorrer TODOS los ítems del BOM (SI y NO) para cálculo
     for item in BOM_DICT.get(diseno, []):
         nombre = item["Insumo"].strip().upper()
         unidad = item["Unidad"].upper()
         regla  = item["ReglaCantidad"].upper()
         param  = item["Parametro"]
 
-        # --- Cantidad por cortina ---
         if regla == "MT_ANCHO_X_MULT":
             factor = _safe_float(param, 1.0)
             cantidad = ancho * multiplicador * factor
@@ -379,7 +399,6 @@ def calcular_y_mostrar_cotizacion():
 
         cantidad_total = cantidad * num_cortinas
 
-        # --- PVP según insumo ---
         if nombre == "TELA 1":
             pvp = _safe_float(st.session_state.get("pvp_tela_1"), 0.0)
             ref = st.session_state.get("ref_tela_sel_1", "")
@@ -411,7 +430,6 @@ def calcular_y_mostrar_cotizacion():
             "Precio ($)": round(precio_total),
         })
 
-    # --- Mano de Obra (línea independiente) ---
     mo_key_candidates = [f"M.O: {diseno}", f"M.O. {diseno}"]
     mo_info = None
     mo_key = None
@@ -435,7 +453,6 @@ def calcular_y_mostrar_cotizacion():
     total = round(subtotal)
     subtotal_sin_iva = total - iva
 
-    # Adjuntar modos de confección por tela (solo informativo por ahora)
     tela_info = {
         "tela1": {
             "tipo": st.session_state.get("tipo_tela_sel_1", ""),
@@ -534,6 +551,14 @@ def pantalla_gestion_datos():
     st.header("Gestión de Archivos de Datos")
     st.info("Utiliza los botones de abajo para descargar las plantillas de Excel.")
     
+    if st.button("Recargar Datos del Repositorio", use_container_width=True):
+        st.cache_data.clear()
+        st.cache_resource.clear()
+        st.rerun()
+    
+    st.markdown("---")
+
+    # --- 1. Diseños ---
     st.subheader("1. Plantilla de Diseños")
     st.markdown("Columnas requeridas: `Diseño`, `Tipo`, `Multiplicador`, `PVP M.O.`")
     template_buffer_designs = create_template_excel(REQUIRED_DESIGNS_COLS, "Diseños")
@@ -544,8 +569,9 @@ def pantalla_gestion_datos():
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         key="download_designs_btn"
     )
-    
     st.markdown("---")
+    
+    # --- 2. BOM ---
     st.subheader("2. Plantilla de BOM")
     st.markdown("Columnas requeridas: `Diseño`, `Insumo`, `Unidad`, `ReglaCantidad`, `Parametro`, `DependeDeSeleccion`, `Observaciones`")
     template_buffer_bom = create_template_excel(REQUIRED_BOM_COLS, "BOM")
@@ -556,8 +582,9 @@ def pantalla_gestion_datos():
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         key="download_bom_btn"
     )
-        
     st.markdown("---")
+    
+    # --- 3. Catálogo de Insumos ---
     st.subheader("3. Plantilla de Catálogo de Insumos")
     st.markdown("Columnas requeridas: `Insumo`, `Unidad`, `Ref`, `Color`, `PVP`")
     template_buffer_insumos = create_template_excel(REQUIRED_CAT_COLS, "Catalogo_Insumos")
@@ -568,8 +595,9 @@ def pantalla_gestion_datos():
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         key="download_insumos_btn"
     )
-        
     st.markdown("---")
+    
+    # --- 4. Catálogo de Telas ---
     st.subheader("4. Plantilla de Catálogo de Telas")
     st.markdown("Columnas requeridas: `TipoTela`, `Referencia`, `Color`, `PVP/Metro ($)`")
     template_buffer_telas = create_template_excel(REQUIRED_TELAS_COLS, "Catalogo_Telas")

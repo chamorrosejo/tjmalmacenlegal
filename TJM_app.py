@@ -582,6 +582,7 @@ def pantalla_datos():
         vendedor['nombre'] = st.text_input("Nombre Vendedor:", value=vendedor.get('nombre', ''))
         vendedor['telefono'] = st.text_input("Teléfono Vendedor:", value=vendedor.get('telefono', ''))
 
+# Reemplaza la función pantalla_resumen() con este código
 def pantalla_resumen():
     st.header("Resumen de la Cotización")
     cliente = st.session_state.datos_cotizacion['cliente']
@@ -626,7 +627,7 @@ def pantalla_resumen():
                     col_cen.markdown(f"• {tela2_str}")
                 
                 insumos_sel = cortina.get('insumos_seleccion', {})
-                    if insumos_sel:
+                if insumos_sel: # <-- ESTA LÍNEA ESTABA MAL INDENTADA
                     for insumo, info in insumos_sel.items():
                         col_cen.markdown(f"• {insumo}: {info['ref']} - {info['color']}")
 
@@ -664,9 +665,7 @@ def pantalla_resumen():
     c1, c2, c3 = st.columns(3)
     c1.metric("Subtotal", f"${int(subtotal):,}")
     c2.metric(f"IVA ({IVA_PERCENT:.0%})", f"${int(iva):,}")
-    c3.metric("Total Cotización", f"${int(total_final):,}")
-
-# --- PANTALLA DE GESTIÓN DE DATOS ---
+    c3.metric("Total Cotización", f"${int(total_final):,}")# --- PANTALLA DE GESTIÓN DE DATOS ---
 def create_template_excel(column_names: list, sheet_name: str = "Plantilla"):
     """
     Crea un archivo Excel en memoria con solo los encabezados de las columnas.
@@ -756,3 +755,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

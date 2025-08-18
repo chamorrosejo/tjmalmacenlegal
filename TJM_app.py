@@ -236,7 +236,7 @@ def sidebar():
             
         st.divider()
 
-        if st.button("Crear Cotización", use_container_width=True):
+        if st.button("Crear Cortina", use_container_width=True):
             st.session_state.editando_index = None
             st.session_state.pagina_actual = 'cotizador'; st.rerun()
         if st.button("Datos de la Cotización", use_container_width=True):
@@ -637,4 +637,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 

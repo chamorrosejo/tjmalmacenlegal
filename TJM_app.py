@@ -6,7 +6,7 @@ from datetime import datetime
 import math
 import io
 import xlsxwriter
-import copy # Importamos la biblioteca copy
+import copy
 
 # =======================
 # Helpers
@@ -209,7 +209,7 @@ st.set_page_config(page_title="Almacén Legal Cotizador", page_icon="logo.png", 
 TABLA_DISENOS, TIPOS_CORTINA, PRECIOS_MANO_DE_OBRA, DISENOS_A_TIPOS, DF_DISENOS = load_designs_from_excel(DESIGNS_XLSX_PATH)
 BOM_DICT, DF_BOM = load_bom_from_excel(BOM_XLSX_PATH)
 CATALOGO_INSUMOS = load_catalog_from_excel(CATALOG_XLSX_PATH)
-CATALOGO_TELAS = load_telas_from_excel(CATALOG_TELAS_XLSX_PATH)
+CATALOGO_TELAS = load_telas_from_excel(CATALOGO_TELAS_XLSX_PATH)
 
 def init_state():
     if 'pagina_actual' not in st.session_state:
@@ -242,7 +242,6 @@ def anadir_a_resumen():
 
 def duplicar_cortina(index):
     cortina_a_duplicar = st.session_state.cortinas_resumen[index]
-    # Usamos deepcopy para asegurarnos de que la copia sea independiente de la original
     cortina_duplicada = copy.deepcopy(cortina_a_duplicar)
     st.session_state.cortinas_resumen.append(cortina_duplicada)
     st.success("¡Cortina duplicada y añadida al resumen!")
@@ -304,7 +303,12 @@ def pantalla_cotizador():
 
     tipo_opciones = list(TIPOS_CORTINA.keys())
     tipo_default = st.session_state.get("tipo_cortina_sel", tipo_opciones[0])
-    tipo_cortina_sel = st.selectbox("Tipo de Cortina", options=tipo_opciones, index=tipo_opciones.index(tipo_default), key="tipo_cortina_sel")
+    
+    if tipo_default in tipo_opciones:
+        tipo_default_index = tipo_opciones.index(tipo_default)
+    else:
+        tipo_default_index = 0
+    tipo_cortina_sel = st.selectbox("Tipo de Cortina", options=tipo_opciones, index=tipo_default_index, key="tipo_cortina_sel")
 
     disenos_disponibles = TIPOS_CORTINA.get(tipo_cortina_sel, [])
     if not disenos_disponibles:
@@ -344,7 +348,11 @@ def pantalla_cotizador():
             return
 
         tipo_options = list(CATALOGO_TELAS.keys())
-        tipo_default_index = tipo_options.index(st.session_state.get(tipo_key, tipo_options[0]))
+        tipo_default_value = st.session_state.get(tipo_key, tipo_options[0])
+        if tipo_default_value in tipo_options:
+            tipo_default_index = tipo_options.index(tipo_default_value)
+        else:
+            tipo_default_index = 0
         tipo = st.selectbox(f"Tipo de Tela {prefix}", options=tipo_options, key=tipo_key, index=tipo_default_index)
         
         if not tipo or tipo not in CATALOGO_TELAS:
@@ -352,7 +360,11 @@ def pantalla_cotizador():
             return
 
         referencias = list(CATALOGO_TELAS[tipo].keys())
-        ref_default_index = referencias.index(st.session_state.get(ref_key, referencias[0]))
+        ref_default_value = st.session_state.get(ref_key, referencias[0])
+        if ref_default_value in referencias:
+            ref_default_index = referencias.index(ref_default_value)
+        else:
+            ref_default_index = 0
         ref = st.selectbox(f"Referencia {prefix}", options=referencias, key=ref_key, index=ref_default_index)
 
         if not ref or ref not in CATALOGO_TELAS[tipo]:
@@ -360,7 +372,11 @@ def pantalla_cotizador():
             return
 
         colores = [x["color"] for x in CATALOGO_TELAS[tipo][ref]]
-        color_default_index = colores.index(st.session_state.get(color_key, colores[0]))
+        color_default_value = st.session_state.get(color_key, colores[0])
+        if color_default_value in colores:
+            color_default_index = colores.index(color_default_value)
+        else:
+            color_default_index = 0
         color = st.selectbox(f"Color {prefix}", options=colores, key=color_key, index=color_default_index)
 
         if not color:
@@ -376,7 +392,11 @@ def pantalla_cotizador():
             st.session_state[pvp_key] = 0.0
             
         modo_options = ["Entera", "Partida", "Semipartida"]
-        modo_default_index = modo_options.index(st.session_state.get(modo_key, "Entera"))
+        modo_default_value = st.session_state.get(modo_key, "Entera")
+        if modo_default_value in modo_options:
+            modo_default_index = modo_options.index(modo_default_value)
+        else:
+            modo_default_index = 0
         st.radio(f"Modo de confección {prefix}", options=modo_options, horizontal=True, key=modo_key, index=modo_default_index)
 
     items_d = BOM_DICT.get(diseno_sel, [])
@@ -433,12 +453,19 @@ def mostrar_insumos_bom(diseno_sel: str):
                 ref_key = f"ref_{nombre}"
                 color_key = f"color_{nombre}"
                 
-                # Carga de valores por defecto para edición
-                ref_default_index = refs.index(st.session_state.get(ref_key, refs[0]))
+                ref_default_value = st.session_state.get(ref_key, refs[0])
+                if ref_default_value in refs:
+                    ref_default_index = refs.index(ref_default_value)
+                else:
+                    ref_default_index = 0
                 ref_sel = st.selectbox(f"Referencia {nombre}", options=refs, key=ref_key, index=ref_default_index)
                 
                 colores = sorted(list({opt['color'] for opt in cat['opciones'] if opt['ref'] == ref_sel}))
-                color_default_index = colores.index(st.session_state.get(color_key, colores[0]))
+                color_default_value = st.session_state.get(color_key, colores[0])
+                if color_default_value in colores:
+                    color_default_index = colores.index(color_default_value)
+                else:
+                    color_default_index = 0
                 color_sel = st.selectbox(f"Color {nombre}", options=colores, key=color_key, index=color_default_index)
                 
                 insumo_info = next(opt for opt in cat['opciones'] if opt['ref'] == ref_sel and opt['color'] == color_sel)
@@ -582,7 +609,6 @@ def pantalla_datos():
         vendedor['nombre'] = st.text_input("Nombre Vendedor:", value=vendedor.get('nombre', ''))
         vendedor['telefono'] = st.text_input("Teléfono Vendedor:", value=vendedor.get('telefono', ''))
 
-# Reemplaza la función pantalla_resumen() con este código
 def pantalla_resumen():
     st.header("Resumen de la Cotización")
     cliente = st.session_state.datos_cotizacion['cliente']
@@ -627,7 +653,7 @@ def pantalla_resumen():
                     col_cen.markdown(f"• {tela2_str}")
                 
                 insumos_sel = cortina.get('insumos_seleccion', {})
-                if insumos_sel: # <-- ESTA LÍNEA ESTABA MAL INDENTADA
+                if insumos_sel:
                     for insumo, info in insumos_sel.items():
                         col_cen.markdown(f"• {insumo}: {info['ref']} - {info['color']}")
 
@@ -665,7 +691,9 @@ def pantalla_resumen():
     c1, c2, c3 = st.columns(3)
     c1.metric("Subtotal", f"${int(subtotal):,}")
     c2.metric(f"IVA ({IVA_PERCENT:.0%})", f"${int(iva):,}")
-    c3.metric("Total Cotización", f"${int(total_final):,}")# --- PANTALLA DE GESTIÓN DE DATOS ---
+    c3.metric("Total Cotización", f"${int(total_final):,}")
+
+# --- PANTALLA DE GESTIÓN DE DATOS ---
 def create_template_excel(column_names: list, sheet_name: str = "Plantilla"):
     """
     Crea un archivo Excel en memoria con solo los encabezados de las columnas.
@@ -755,4 +783,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

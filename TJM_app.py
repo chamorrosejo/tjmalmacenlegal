@@ -321,7 +321,7 @@ def pantalla_cotizador():
         ui_tela("2")
 
     st.markdown("---")
-    st.subheader("4. Insumos según BOM")
+    st.subheader("4. Insumos de la Cortina")
     mostrar_insumos_bom(diseno_sel)
 
     if st.button("Calcular Cotización", type="primary"):
@@ -628,3 +628,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

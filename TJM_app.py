@@ -222,8 +222,8 @@ def init_state():
 
 def anadir_a_resumen():
     if st.session_state.get('cortina_calculada'):
+        # Solo añade la cortina, no resetea la pantalla
         st.session_state.cortinas_resumen.append(st.session_state.cortina_calculada)
-        st.session_state.cortina_calculada = None
         st.success("¡Cortina añadida a la cotización!")
 
 def sidebar():
@@ -245,7 +245,7 @@ def sidebar():
             st.session_state.pagina_actual = 'resumen'; st.rerun()
 
 def pantalla_cotizador():
-    st.header("Configurar Cortina")
+    st.header("Crea la Cortina")
     st.subheader("1. Medidas")
     ancho = st.number_input("Ancho de la Ventana (m)", min_value=0.1, value=2.0, step=0.1, key="ancho")
     alto = st.number_input("Alto de la Cortina (m)", min_value=0.1, value=2.0, step=0.1, key="alto")
@@ -328,16 +328,8 @@ def pantalla_cotizador():
     st.subheader("Insumos de la Cortina")
     mostrar_insumos_bom(diseno_sel)
 
-    # Creamos dos columnas para los botones
-    btn_col1, btn_col2 = st.columns([0.5, 0.5])
-
-    # Se corrige la lógica para que el botón active la función
-    if btn_col1.button("Calcular Cotización", type="primary"):
+    if st.button("Calcular Cotización", type="primary"):
         calcular_y_mostrar_cotizacion()
-
-    # Muestra el botón 'Añadir a la Cotización' solo si ya se ha hecho un cálculo
-    if st.session_state.get('cortina_calculada'):
-        btn_col2.button("Añadir a la Cotización", on_click=anadir_a_resumen)
 
     if st.session_state.get('cortina_calculada'):
         st.success("Cálculo realizado. Revisa los detalles a continuación.")
@@ -355,6 +347,11 @@ def pantalla_cotizador():
         c1.metric("Subtotal Cortina", f"${int(st.session_state.cortina_calculada['subtotal']):,}")
         c2.metric("IVA Cortina", f"${int(st.session_state.cortina_calculada['iva']):,}")
         c3.metric("Total Cortina", f"${int(st.session_state.cortina_calculada['total']):,}")
+        
+        st.markdown("---") # Añadimos un separador para el botón
+        if st.button("Añadir a la Cotización"):
+            anadir_a_resumen()
+
 
 def mostrar_insumos_bom(diseno_sel: str):
     items = [it for it in BOM_DICT.get(diseno_sel, []) if it["DependeDeSeleccion"] == "SI"]
@@ -640,4 +637,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

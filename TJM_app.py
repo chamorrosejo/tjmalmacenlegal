@@ -268,105 +268,127 @@ def generar_pdf_cotizacion():
     pdf.alias_nb_pages()
     pdf.add_page()
     pdf.set_auto_page_break(auto=True, margin=15)
-    
-    # --- Datos del Cliente y Vendedor (diseño de tabla) ---
+
+    # --- Datos del Cliente y Vendedor (encabezado de la cotización) ---
     pdf.set_font('Arial', 'B', 12)
     pdf.cell(90, 7, "Vendedor:", 0, 0, 'L')
     pdf.cell(0, 7, "Cliente:", 0, 1, 'L')
-    
+
     pdf.set_font('Arial', '', 10)
     pdf.cell(90, 5, f"Nombre: {st.session_state.datos_cotizacion['vendedor'].get('nombre', 'N/A')}", 0, 0, 'L')
     pdf.cell(0, 5, f"Nombre: {st.session_state.datos_cotizacion['cliente'].get('nombre', 'N/A')}", 0, 1, 'L')
-    
+
     pdf.cell(90, 5, f"Teléfono: {st.session_state.datos_cotizacion['vendedor'].get('telefono', 'N/A')}", 0, 0, 'L')
     pdf.cell(0, 5, f"Teléfono: {st.session_state.datos_cotizacion['cliente'].get('telefono', 'N/A')}", 0, 1, 'L')
 
     pdf.cell(90, 5, f"Dirección: {st.session_state.datos_cotizacion['cliente'].get('direccion', 'N/A')}", 0, 0, 'L')
     pdf.cell(0, 5, f"Cédula: {st.session_state.datos_cotizacion['cliente'].get('cedula', 'N/A')}", 0, 1, 'L')
-    
+
     pdf.ln(10)
 
-    # --- Tabla de productos ---
-    pdf.set_font('Arial', 'B', 9)
-    pdf.set_fill_color(129, 153, 114)
-    pdf.set_text_color(255)
-    
-    column_widths = [10, 45, 35, 45, 25, 30]
-    pdf.cell(column_widths[0], 10, 'N°', 1, 0, 'C', 1)
-    pdf.cell(column_widths[1], 10, 'Nombre', 1, 0, 'C', 1)
-    pdf.cell(column_widths[2], 10, 'Cant. / Ancho x Alto', 1, 0, 'C', 1)
-    pdf.cell(column_widths[3], 10, 'Características', 1, 0, 'C', 1)
-    pdf.cell(column_widths[4], 10, 'Valor Total', 1, 0, 'C', 1)
-    pdf.cell(column_widths[5], 10, 'Comentarios', 1, 1, 'C', 1)
-    
-    pdf.set_font('Arial', '', 9)
-    pdf.set_text_color(0)
-    
-    # Filas de la tabla
+    # =======================
+    # Tabla de productos
+    # =======================
+    column_widths = [10, 45, 35, 45, 25, 30]   # N°, Nombre, Cant/Dim, Caracts, Total, Coment
+    header_h = 10
+    line_h = 5  # alto por línea dentro de cada MultiCell
+
+    def draw_table_header():
+        pdf.set_font('Arial', 'B', 9)
+        pdf.set_fill_color(129, 153, 114)
+        pdf.set_text_color(255)
+        headers = ['N°', 'Nombre', 'Cant. / Ancho x Alto', 'Características', 'Valor Total', 'Comentarios']
+        for w, htxt in zip(column_widths, headers):
+            pdf.cell(w, header_h, htxt, 1, 0, 'C', 1)
+        pdf.ln(header_h)
+        pdf.set_text_color(0)
+        pdf.set_font('Arial', '', 9)
+
+    draw_table_header()
+
     for i, cortina in enumerate(st.session_state.cortinas_resumen):
-        # Construye la cadena de características de forma robusta
+        # Características
         caracteristicas_list = []
         if cortina['telas']['tela1']:
-            tela1_info = cortina['telas']['tela1']
-            caracteristicas_list.append(f"Tela 1: {tela1_info['referencia']} - {tela1_info['color']} [{tela1_info['modo_confeccion']}]")
+            t1 = cortina['telas']['tela1']
+            caracteristicas_list.append(
+                f"Tela 1: {t1['referencia']} - {t1['color']} [{t1['modo_confeccion']}]"
+            )
         if cortina['telas'].get('tela2') and cortina['telas']['tela2'].get('referencia'):
-            tela2_info = cortina['telas']['tela2']
-            caracteristicas_list.append(f"Tela 2: {tela2_info['referencia']} - {tela2_info['color']} [{tela2_info['modo_confeccion']}]")
-        insumos_sel = cortina.get('insumos_seleccion', {})
-        if insumos_sel:
-            for insumo, info in insumos_sel.items():
-                caracteristicas_list.append(f"{insumo}: {info['ref']} - {info['color']}")
+            t2 = cortina['telas']['tela2']
+            caracteristicas_list.append(
+                f"Tela 2: {t2['referencia']} - {t2['color']} [{t2['modo_confeccion']}]"
+            )
+        for insumo, info in (cortina.get('insumos_seleccion', {}) or {}).items():
+            caracteristicas_list.append(f"{insumo}: {info['ref']} - {info['color']}")
         caracteristicas = "\n".join(caracteristicas_list)
-        
-        # Datos para cada celda
+
+        # Datos de celdas
         num = str(i + 1)
         nombre = cortina['diseno']
-        
         ancho_calc = cortina['ancho'] * cortina['multiplicador']
         cant_ancho_alto = f"{cortina['cantidad']} und\n{ancho_calc:.2f} x {cortina['alto']:.2f} mts"
-        
         valor_total = f"${int(cortina['total']):,}"
         comentarios = ""
 
-        # Calcular la altura de la fila
-        pdf.set_font('Arial', '', 9)
-        max_lines = max(len(cant_ancho_alto.split('\n')), len(caracteristicas.split('\n')))
-        row_height = max_lines * 4 + 2
-        
-        x_pos_start = pdf.get_x()
-        y_pos_start = pdf.get_y()
-        
-        # Dibujar cada celda en la fila
-        pdf.cell(column_widths[0], row_height, num, 1, 0, 'C')
-        pdf.cell(column_widths[1], row_height, nombre, 1, 0)
-        
-        # Usar multi_cell para las celdas con varias líneas, reposicionando el cursor
-        pdf.set_xy(x_pos_start + sum(column_widths[:2]), y_pos_start)
-        pdf.multi_cell(column_widths[2], 4, cant_ancho_alto, 1, 'L')
-        
-        pdf.set_xy(x_pos_start + sum(column_widths[:3]), y_pos_start)
-        pdf.multi_cell(column_widths[3], 4, caracteristicas, 1, 'L')
-        
-        pdf.set_xy(x_pos_start + sum(column_widths[:4]), y_pos_start)
-        pdf.multi_cell(column_widths[4], 4, valor_total, 1, 'R')
-        
-        pdf.set_xy(x_pos_start + sum(column_widths[:5]), y_pos_start)
-        pdf.multi_cell(column_widths[5], 4, comentarios, 1, 'L', 0)
-        
+        # Altura uniforme de la fila (misma para todas las columnas)
+        lines_cant = max(1, cant_ancho_alto.count("\n") + 1)
+        lines_car  = max(1, caracteristicas.count("\n") + 1)
+        max_lines  = max(lines_cant, lines_car)
+        row_h = max_lines * line_h + 2
+
+        # Salto de página si no cabe la fila completa
+        if pdf.get_y() + row_h > pdf.page_break_trigger:
+            pdf.add_page()
+            draw_table_header()
+
+        # Dibujar marcos de cada celda con la misma altura
+        x0, y0 = pdf.get_x(), pdf.get_y()
+        x = x0
+        for w in column_widths:
+            pdf.rect(x, y0, w, row_h)
+            x += w
+
+        # Escribir texto en cada celda (sin bordes; ya dibujamos rectángulos)
+        pdf.set_xy(x0, y0)
+        pdf.multi_cell(column_widths[0], line_h, num, 0, 'C')
+
+        pdf.set_xy(x0 + column_widths[0], y0)
+        pdf.multi_cell(column_widths[1], line_h, nombre, 0, 'L')
+
+        pdf.set_xy(x0 + sum(column_widths[:2]), y0)
+        pdf.multi_cell(column_widths[2], line_h, cant_ancho_alto, 0, 'L')
+
+        pdf.set_xy(x0 + sum(column_widths[:3]), y0)
+        pdf.multi_cell(column_widths[3], line_h, caracteristicas, 0, 'L')
+
+        pdf.set_xy(x0 + sum(column_widths[:4]), y0)
+        pdf.multi_cell(column_widths[4], line_h, valor_total, 0, 'R')
+
+        pdf.set_xy(x0 + sum(column_widths[:5]), y0)
+        pdf.multi_cell(column_widths[5], line_h, comentarios, 0, 'L')
+
+        # Avanzar al inicio de la siguiente fila
+        pdf.set_xy(x0, y0 + row_h)
+
     pdf.ln(10)
-    
-    # --- Totales Finales de la Cotización ---
+
+    # =======================
+    # Totales (usando los campos ya calculados por cada cortina)
+    # =======================
+    subtotal = sum(c['subtotal'] for c in st.session_state.cortinas_resumen)
+    iva = sum(c['iva'] for c in st.session_state.cortinas_resumen)
     total_final = sum(c['total'] for c in st.session_state.cortinas_resumen)
-    iva = total_final * IVA_PERCENT
-    subtotal = total_final - iva
-    
+
     pdf.set_font('Arial', 'B', 10)
     pdf.cell(0, 7, f"Subtotal: ${int(subtotal):,}", 0, 1, 'R')
-    pdf.cell(0, 7, f"IVA (19%): ${int(iva):,}", 0, 1, 'R')
+    pdf.cell(0, 7, f"IVA ({IVA_PERCENT:.0%}): ${int(iva):,}", 0, 1, 'R')
     pdf.set_font('Arial', 'B', 12)
     pdf.cell(0, 10, f"Vr. Total: ${int(total_final):,}", 0, 1, 'R')
 
-    return pdf.output(dest='S').encode('latin-1')
+    return pdf.output(dest='S').encode('latin-1', 'ignore')
+
+
 def sidebar():
     with st.sidebar:
         st.image("logo.png") 
@@ -915,5 +937,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 

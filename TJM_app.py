@@ -261,6 +261,7 @@ def duplicar_cortina(index):
     st.session_state.cortinas_resumen.append(cortina_duplicada)
     st.success("¡Cortina duplicada y añadida al resumen!")
 
+# Reemplaza la función generar_pdf_cotizacion() con este código
 def generar_pdf_cotizacion():
     pdf = PDF()
     pdf.alias_nb_pages()
@@ -286,10 +287,10 @@ def generar_pdf_cotizacion():
 
     # --- Tabla de productos ---
     pdf.set_font('Arial', 'B', 9)
-    pdf.set_fill_color(129, 153, 114)  # Color verde como el de la imagen
-    pdf.set_text_color(255) # Texto blanco
+    pdf.set_fill_color(129, 153, 114)
+    pdf.set_text_color(255)
     
-    column_widths = [10, 45, 35, 45, 25, 30] # N, Nombre, Cantidad, Caract, Valor, Comentarios
+    column_widths = [10, 45, 35, 45, 25, 30]
     pdf.cell(column_widths[0], 10, 'N°', 1, 0, 'C', 1)
     pdf.cell(column_widths[1], 10, 'Nombre', 1, 0, 'C', 1)
     pdf.cell(column_widths[2], 10, 'Cant. / Ancho x Alto', 1, 0, 'C', 1)
@@ -298,17 +299,12 @@ def generar_pdf_cotizacion():
     pdf.cell(column_widths[5], 10, 'Comentarios', 1, 1, 'C', 1)
     
     pdf.set_font('Arial', '', 9)
-    pdf.set_text_color(0) # Texto negro
-    pdf.set_fill_color(255) # Fondo blanco
+    pdf.set_text_color(0)
+    pdf.set_fill_color(255)
     
     # Filas de la tabla
     for i, cortina in enumerate(st.session_state.cortinas_resumen):
-        num = str(i + 1)
-        nombre = cortina['diseno']
-        
-        ancho_calc = cortina['ancho'] * cortina['multiplicador']
-        cant_ancho_alto = f"{cortina['cantidad']} und\n{ancho_calc:.2f} x {cortina['alto']:.2f} mts"
-        
+        # Construye la cadena de características de forma robusta
         caracteristicas_list = []
         if cortina['telas']['tela1']:
             tela1_info = cortina['telas']['tela1']
@@ -322,6 +318,11 @@ def generar_pdf_cotizacion():
                 caracteristicas_list.append(f"{insumo}: {info['ref']} - {info['color']}")
         caracteristicas = "\n".join(caracteristicas_list)
         
+        # Datos para cada celda
+        num = str(i + 1)
+        nombre = cortina['diseno']
+        ancho_calc = cortina['ancho'] * cortina['multiplicador']
+        cant_ancho_alto = f"{cortina['cantidad']} und\n{ancho_calc:.2f} x {cortina['alto']:.2f} mts"
         valor_total = f"${int(cortina['total']):,}"
         comentarios = ""
 
@@ -362,6 +363,7 @@ def generar_pdf_cotizacion():
     pdf.set_font('Arial', 'B', 12)
     pdf.cell(0, 10, f"Vr. Total: ${int(total_final):,}", 0, 1, 'R')
 
+    return pdf.output(dest='S').encode('latin-1')
     return pdf.output(dest='S').encode('latin-1')
 
 def sidebar():
@@ -912,3 +914,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

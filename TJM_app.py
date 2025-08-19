@@ -246,14 +246,13 @@ def duplicar_cortina(index):
     st.session_state.cortinas_resumen.append(cortina_duplicada)
     st.success("¡Cortina duplicada y añadida al resumen!")
 
-# Reemplaza la función generar_pdf_cotizacion() con este código
 def generar_pdf_cotizacion():
     pdf = PDF()
     pdf.alias_nb_pages()
     pdf.add_page()
     pdf.set_auto_page_break(auto=True, margin=15)
     
-    # --- Datos del Cliente y Vendedor (diseño de tabla) ---
+    # --- Encabezado de la Cotización ---
     pdf.set_font('Arial', 'B', 12)
     pdf.cell(90, 7, "Vendedor:", 0, 0, 'L')
     pdf.cell(0, 7, "Cliente:", 0, 1, 'L')
@@ -281,7 +280,7 @@ def generar_pdf_cotizacion():
         pdf.set_font('Arial', '', 10)
         ancho_calc = cortina['ancho'] * cortina['multiplicador']
         dim_cant_diseno = f"Dimensiones: {ancho_calc:.2f}x{cortina['alto']:.2f} m | Cantidad: {cortina['cantidad']} und | Diseño: {cortina['diseno']}"
-        pdf.cell(0, 5, dim_cant_diseno, 0, 1)
+        pdf.multi_cell(0, 5, dim_cant_diseno, 0, 1)
         pdf.ln(5)
 
         # Encabezados de la tabla de insumos
@@ -322,6 +321,7 @@ def generar_pdf_cotizacion():
     pdf.cell(0, 7, f"Subtotal Total: ${int(subtotal):,}", 0, 1, 'R')
 
     return pdf.output(dest='S').encode('latin-1')
+
 def sidebar():
     with st.sidebar:
         st.image("logo.png") 
@@ -870,4 +870,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

@@ -269,7 +269,7 @@ def generar_pdf_cotizacion():
     pdf.add_page()
     pdf.set_auto_page_break(auto=True, margin=15)
 
-    # --- Datos del Cliente y Vendedor (encabezado de la cotización) ---
+    # --- Datos del Cliente y Vendedor ---
     pdf.set_font('Arial', 'B', 12)
     pdf.cell(90, 7, "Vendedor:", 0, 0, 'L')
     pdf.cell(0, 7, "Cliente:", 0, 1, 'L')
@@ -289,7 +289,8 @@ def generar_pdf_cotizacion():
     # =======================
     # Tabla de productos
     # =======================
-    column_widths = [10, 45, 35, 45, 25, 30]   # N°, Nombre, Cant/Dim, Caracts, Total, Coment
+    # Anchos ajustados: más espacio para "Características"
+    column_widths = [10, 45, 35, 60, 25, 15]  # N°, Nombre, Cant/Dim, Caracts, Total, Coment
     header_h = 10
     line_h = 5  # alto por línea dentro de cada MultiCell
 
@@ -303,6 +304,36 @@ def generar_pdf_cotizacion():
         pdf.ln(header_h)
         pdf.set_text_color(0)
         pdf.set_font('Arial', '', 9)
+
+    # --- Wrapper que ajusta texto al ancho real de la columna ---
+    def wrap_text(text: str, col_w: float) -> str:
+        text = "" if text is None else str(text)
+        wrapped_lines = []
+        for para in text.split("\n"):
+            words = para.split(" ")
+            line = ""
+            for w in words:
+                candidate = (w if not line else line + " " + w)
+                # pequeño margen para no tocar el borde
+                if pdf.get_string_width(candidate) <= col_w - 2:
+                    line = candidate
+                else:
+                    if line:  # cerrar línea y continuar
+                        wrapped_lines.append(line)
+                        line = w
+                    else:
+                        # palabra muy larga: romper duro
+                        token = w
+                        while pdf.get_string_width(token) > col_w - 2 and len(token) > 1:
+                            # encontrar el máximo que quepa
+                            k = len(token)
+                            while k > 1 and pdf.get_string_width(token[:k]) > col_w - 2:
+                                k -= 1
+                            wrapped_lines.append(token[:k])
+                            token = token[k:]
+                        line = token
+            wrapped_lines.append(line)
+        return "\n".join(wrapped_lines)
 
     draw_table_header()
 
@@ -321,20 +352,23 @@ def generar_pdf_cotizacion():
             )
         for insumo, info in (cortina.get('insumos_seleccion', {}) or {}).items():
             caracteristicas_list.append(f"{insumo}: {info['ref']} - {info['color']}")
-        caracteristicas = "\n".join(caracteristicas_list)
+        caracteristicas_raw = "\n".join(caracteristicas_list)
 
         # Datos de celdas
         num = str(i + 1)
         nombre = cortina['diseno']
         ancho_calc = cortina['ancho'] * cortina['multiplicador']
-        cant_ancho_alto = f"{cortina['cantidad']} und\n{ancho_calc:.2f} x {cortina['alto']:.2f} mts"
+        cant_raw = f"{cortina['cantidad']} und\n{ancho_calc:.2f} x {cortina['alto']:.2f} mts"
         valor_total = f"${int(cortina['total']):,}"
         comentarios = ""
 
-        # Altura uniforme de la fila (misma para todas las columnas)
-        lines_cant = max(1, cant_ancho_alto.count("\n") + 1)
-        lines_car  = max(1, caracteristicas.count("\n") + 1)
-        max_lines  = max(lines_cant, lines_car)
+        # Texto envuelto según ancho de columna
+        cant_txt = wrap_text(cant_raw, column_widths[2])
+        car_txt  = wrap_text(caracteristicas_raw, column_widths[3])
+        com_txt  = wrap_text(comentarios, column_widths[5])
+
+        # Altura uniforme de la fila
+        max_lines = max(cant_txt.count("\n") + 1, car_txt.count("\n") + 1, com_txt.count("\n") + 1)
         row_h = max_lines * line_h + 2
 
         # Salto de página si no cabe la fila completa
@@ -342,14 +376,14 @@ def generar_pdf_cotizacion():
             pdf.add_page()
             draw_table_header()
 
-        # Dibujar marcos de cada celda con la misma altura
+        # Dibujar marcos de la fila
         x0, y0 = pdf.get_x(), pdf.get_y()
         x = x0
         for w in column_widths:
             pdf.rect(x, y0, w, row_h)
             x += w
 
-        # Escribir texto en cada celda (sin bordes; ya dibujamos rectángulos)
+        # Escribir cada celda (sin bordes; ya dibujamos rectángulos)
         pdf.set_xy(x0, y0)
         pdf.multi_cell(column_widths[0], line_h, num, 0, 'C')
 
@@ -357,24 +391,24 @@ def generar_pdf_cotizacion():
         pdf.multi_cell(column_widths[1], line_h, nombre, 0, 'L')
 
         pdf.set_xy(x0 + sum(column_widths[:2]), y0)
-        pdf.multi_cell(column_widths[2], line_h, cant_ancho_alto, 0, 'L')
+        pdf.multi_cell(column_widths[2], line_h, cant_txt, 0, 'L')
 
         pdf.set_xy(x0 + sum(column_widths[:3]), y0)
-        pdf.multi_cell(column_widths[3], line_h, caracteristicas, 0, 'L')
+        pdf.multi_cell(column_widths[3], line_h, car_txt, 0, 'L')
 
         pdf.set_xy(x0 + sum(column_widths[:4]), y0)
         pdf.multi_cell(column_widths[4], line_h, valor_total, 0, 'R')
 
         pdf.set_xy(x0 + sum(column_widths[:5]), y0)
-        pdf.multi_cell(column_widths[5], line_h, comentarios, 0, 'L')
+        pdf.multi_cell(column_widths[5], line_h, com_txt, 0, 'L')
 
-        # Avanzar al inicio de la siguiente fila
+        # Siguiente fila
         pdf.set_xy(x0, y0 + row_h)
 
     pdf.ln(10)
 
     # =======================
-    # Totales (usando los campos ya calculados por cada cortina)
+    # Totales
     # =======================
     subtotal = sum(c['subtotal'] for c in st.session_state.cortinas_resumen)
     iva = sum(c['iva'] for c in st.session_state.cortinas_resumen)
@@ -937,6 +971,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 

@@ -180,28 +180,42 @@ def load_telas_from_excel(path: str):
 # =======================
 # PDF (igual que antes)
 # =======================
+# Reemplaza la clase PDF(FPDF) completa con este código
 class PDF(FPDF):
     def header(self):
         try:
             logo_path = os.path.join(SCRIPT_DIR, "Megatex.png")
+            # Posiciona el logo en la esquina superior izquierda
             self.image(logo_path, 10, 8, 33)
         except Exception:
             pass
-        self.set_font('Arial', 'B', 20)
+
+        # Posiciona el texto "Almacén Legal"
+        self.set_xy(45, 14)
+        self.set_font('Arial', '', 14)
         self.set_text_color(0, 80, 180)
-        self.cell(0, 10, 'Cotización', 0, 1, 'R')
+        self.cell(0, 10, 'Almacén Legal', 0, 1)
+
+        # Posiciona el título "COTIZACIÓN"
+        self.set_xy(45, 20)
+        self.set_font('Arial', 'B', 30)
+        self.set_text_color(0, 80, 180)
+        self.cell(0, 10, 'COTIZACIÓN', 0, 1)
+
+        # Posiciona la fecha, alineada con el título
+        self.set_xy(140, 25)
         self.set_font('Arial', '', 10)
         self.set_text_color(128)
-        self.cell(0, 5, f"Fecha: {datetime.now().strftime('%Y-%m-%d')}", 0, 1, 'R')
-        self.cell(0, 5, f"Cotización #: {datetime.now().strftime('%Y%m%d%H%M')}", 0, 1, 'R')
-        self.ln(10)
+        self.cell(0, 5, f"Fecha: {datetime.now().strftime('%Y-%m-%d')}", 0, 1)
+
+        # Deja espacio para que el contenido de la página empiece más abajo
+        self.ln(20)
+
     def footer(self):
         self.set_y(-15)
         self.set_font('Arial', 'I', 8)
         self.set_text_color(128)
-        self.cell(0, 10, f'Página {self.page_no()}', 0, 0, 'R')
-
-# =======================
+        self.cell(0, 10, f'Página {self.page_no()}', 0, 0, 'R')# =======================
 # App state & UI
 # =======================
 st.set_page_config(page_title="Almacén Legal Cotizador", page_icon="logo.png", layout="wide")
@@ -870,3 +884,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

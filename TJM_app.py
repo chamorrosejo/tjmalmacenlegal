@@ -270,51 +270,43 @@ def generar_pdf_cotizacion():
     pdf.set_auto_page_break(auto=True, margin=15)
 
     # =======================
-    # Datos del Vendedor y Cliente
+    # Datos de Cliente (izq) y Vendedor (der)
     # =======================
     vendedor = st.session_state.datos_cotizacion.get('vendedor', {})
     cliente  = st.session_state.datos_cotizacion.get('cliente', {})
 
-    # Layout de dos columnas (90 mm cada una + 10 mm de separación = ancho útil 190 mm)
     col_w = 90
     gap = 10
-    x_left = pdf.l_margin
-    x_right = x_left + col_w + gap
+    x_left = pdf.l_margin           # CLIENTE
+    x_right = x_left + col_w + gap  # VENDEDOR
     y = pdf.get_y()
 
-    # Títulos de columna
+    # Títulos
     pdf.set_font('Arial', 'B', 12)
-    pdf.set_xy(x_left, y);  pdf.cell(col_w, 7, "Vendedor:", 0, 0, 'L')
-    pdf.set_xy(x_right, y); pdf.cell(col_w, 7, "Cliente:", 0, 1, 'L')
+    pdf.set_xy(x_left, y);  pdf.cell(col_w, 7, "Cliente:", 0, 0, 'L')
+    pdf.set_xy(x_right, y); pdf.cell(col_w, 7, "Vendedor:", 0, 1, 'L')
     y += 7
 
-    # Helper: imprime "Etiqueta: valor" con etiqueta en negrita y valor en regular
+    # Helper: etiqueta en negrita + valor normal en una misma línea
     def label_value(x, y, label, value, width):
-        label = str(label).strip()
         value = "" if value is None else str(value)
         pdf.set_xy(x, y)
         pdf.set_font('Arial', 'B', 10)
-        lw = pdf.get_string_width(label + " ") + 1  # ancho de la etiqueta
-        pdf.cell(lw, 5, label + " ", 0, 0, 'L')
+        lbl = label.strip() + " "
+        lbl_w = pdf.get_string_width(lbl) + 1
+        pdf.cell(lbl_w, 5, lbl, 0, 0, 'L')
         pdf.set_font('Arial', '', 10)
-        pdf.cell(max(0, width - lw), 5, value, 0, 0, 'L')
+        pdf.cell(max(0, width - lbl_w), 5, value, 0, 0, 'L')
 
-    # Fila 1: Nombre
-    label_value(x_left,  y, "Nombre:",   vendedor.get('nombre', 'N/A'), col_w)
-    label_value(x_right, y, "Nombre:",   cliente.get('nombre', 'N/A'),  col_w)
-    y += 5
-
-    # Fila 2: Teléfono
-    label_value(x_left,  y, "Teléfono:", vendedor.get('telefono', 'N/A'), col_w)
-    label_value(x_right, y, "Teléfono:", cliente.get('telefono', 'N/A'),  col_w)
-    y += 5
-
-    # Fila 3: (Vendedor sin dirección) / Cédula del cliente
-    # Izquierda vacía para mantener altura alineada
-    pdf.set_xy(x_left, y); pdf.cell(col_w, 5, "", 0, 0, 'L')
-    label_value(x_right, y, "Cédula:",   cliente.get('cedula', 'N/A'),    col_w)
+    # CLIENTE
+    label_value(x_left,  y, "Nombre:",   cliente.get('nombre', 'N/A'),  col_w)
+    label_value(x_right, y, "Nombre:",   vendedor.get('nombre', 'N/A'), col_w); y += 5
+    label_value(x_left,  y, "Teléfono:", cliente.get('telefono', 'N/A'),  col_w)
+    label_value(x_right, y, "Teléfono:", vendedor.get('telefono', 'N/A'), col_w); y += 5
+    label_value(x_left,  y, "Cédula:",   cliente.get('cedula', 'N/A'), col_w)
+    # derecha vacío para mantener altura alineada
+    pdf.set_xy(x_right, y); pdf.cell(col_w, 5, "", 0, 1, 'L')
     y += 7
-
     pdf.set_y(y)
     pdf.ln(3)
 
@@ -337,61 +329,92 @@ def generar_pdf_cotizacion():
         pdf.set_text_color(0)
         pdf.set_font('Arial', '', 9)
 
-    def wrap_text(text: str, col_w: float) -> str:
-        """Ajusta el texto al ancho de la columna (rompe palabras largas si hace falta)."""
+    def wrap_to_width(text: str, col_w: float) -> list[str]:
+        """Envuelve texto (sin estilo) al ancho col_w usando la fuente actual."""
         text = "" if text is None else str(text)
-        wrapped_lines = []
+        out = []
         for para in text.split("\n"):
-            words = para.split(" ")
-            line = ""
+            words, line = para.split(" "), ""
             for w in words:
-                candidate = w if not line else line + " " + w
-                if pdf.get_string_width(candidate) <= col_w - 2:
-                    line = candidate
+                cand = w if not line else line + " " + w
+                if pdf.get_string_width(cand) <= col_w - 2:
+                    line = cand
                 else:
                     if line:
-                        wrapped_lines.append(line)
-                        line = w
+                        out.append(line); line = w
                     else:
                         token = w
                         while pdf.get_string_width(token) > col_w - 2 and len(token) > 1:
                             k = len(token)
                             while k > 1 and pdf.get_string_width(token[:k]) > col_w - 2:
                                 k -= 1
-                            wrapped_lines.append(token[:k])
-                            token = token[k:]
+                            out.append(token[:k]); token = token[k:]
                         line = token
-            wrapped_lines.append(line)
-        return "\n".join(wrapped_lines)
+            out.append(line)
+        return out
+
+    def draw_label_value_in_cell(x, y, w, line_h, pairs):
+        """
+        Dibuja varias líneas 'label: value' donde label va en negrita y value normal,
+        con ajuste de línea para el value.
+        Retorna la altura consumida.
+        """
+        cur_y = y
+        for label, value in pairs:
+            lbl = label.strip() + " "
+            pdf.set_font('Arial', 'B', 9)
+            lbl_w = pdf.get_string_width(lbl) + 1
+            avail_w = max(1, w - lbl_w)
+
+            pdf.set_font('Arial', '', 9)
+            wrapped_vals = wrap_to_width(value, avail_w) or [""]
+
+            # Primera sublínea: imprimimos label en negrita + primera parte del valor
+            pdf.set_xy(x, cur_y)
+            pdf.set_font('Arial', 'B', 9); pdf.cell(lbl_w, line_h, lbl, 0, 0, 'L')
+            pdf.set_font('Arial', '', 9);  pdf.cell(avail_w, line_h, wrapped_vals[0], 0, 1, 'L')
+            cur_y += line_h
+
+            # Resto de sublíneas: solo el valor, desplazado a la derecha
+            for seg in wrapped_vals[1:]:
+                pdf.set_xy(x + lbl_w, cur_y)
+                pdf.set_font('Arial', '', 9)
+                pdf.cell(avail_w, line_h, seg, 0, 1, 'L')
+                cur_y += line_h
+        return cur_y - y
 
     draw_table_header()
 
     for i, cortina in enumerate(st.session_state.cortinas_resumen):
-        # Características
-        caracteristicas_list = []
+        # --- Pares (label, value) para CARACTERÍSTICAS ---
+        pairs = []
         if cortina['telas']['tela1']:
             t1 = cortina['telas']['tela1']
-            caracteristicas_list.append(f"Tela 1: {t1['referencia']} - {t1['color']} [{t1['modo_confeccion']}]")
+            pairs.append(("Tela 1:", f"{t1['referencia']} - {t1['color']} [{t1['modo_confeccion']}]"))
         if cortina['telas'].get('tela2') and cortina['telas']['tela2'].get('referencia'):
             t2 = cortina['telas']['tela2']
-            caracteristicas_list.append(f"Tela 2: {t2['referencia']} - {t2['color']} [{t2['modo_confeccion']}]")
+            pairs.append(("Tela 2:", f"{t2['referencia']} - {t2['color']} [{t2['modo_confeccion']}]"))
         for insumo, info in (cortina.get('insumos_seleccion', {}) or {}).items():
-            caracteristicas_list.append(f"{insumo}: {info['ref']} - {info['color']}")
-        caracteristicas_raw = "\n".join(caracteristicas_list)
+            pairs.append((f"{insumo}:", f"{info['ref']} - {info['color']}"))
 
-        # Datos de celdas
+        # Datos de otras columnas
         num = str(i + 1)
         nombre = cortina['diseno']
         ancho_calc = cortina['ancho'] * cortina['multiplicador']
-        cant_raw = f"{cortina['cantidad']} und\n{ancho_calc:.2f} x {cortina['alto']:.2f} mts"
+        cant_str = f"{cortina['cantidad']} und\n{ancho_calc:.2f} x {cortina['alto']:.2f} mts"
         valor_total = f"${int(cortina['total']):,}"
 
-        # Envolver texto según ancho
-        cant_txt = wrap_text(cant_raw, column_widths[2])
-        car_txt  = wrap_text(caracteristicas_raw, column_widths[3])
-
-        # Altura uniforme por fila
-        max_lines = max(cant_txt.count("\n") + 1, car_txt.count("\n") + 1, 1)
+        # --- Calcular altura de la fila ---
+        # líneas de Cant/Dim
+        pdf.set_font('Arial', '', 9)
+        cant_lines = wrap_to_width(cant_str, column_widths[2])
+        # líneas necesarias en Características (sumando sublíneas envueltas)
+        car_lines_total = 0
+        for label, value in pairs:
+            lbl_w = pdf.get_string_width(label.strip() + " ") + 1
+            avail_w = max(1, column_widths[3] - lbl_w)
+            car_lines_total += max(1, len(wrap_to_width(value, avail_w)))
+        max_lines = max(len(cant_lines), car_lines_total, 1)
         row_h = max_lines * line_h + 2
 
         # Salto de página si no cabe
@@ -406,19 +429,25 @@ def generar_pdf_cotizacion():
             pdf.rect(x, y0, w, row_h)
             x += w
 
-        # Contenidos
+        # ----- Contenidos -----
+        # N°
         pdf.set_xy(x0, y0)
         pdf.multi_cell(column_widths[0], line_h, num, 0, 'C')
 
+        # Nombre
         pdf.set_xy(x0 + column_widths[0], y0)
         pdf.multi_cell(column_widths[1], line_h, nombre, 0, 'L')
 
+        # Cant/Dim
         pdf.set_xy(x0 + sum(column_widths[:2]), y0)
-        pdf.multi_cell(column_widths[2], line_h, cant_txt, 0, 'L')
+        pdf.multi_cell(column_widths[2], line_h, "\n".join(cant_lines), 0, 'L')
 
-        pdf.set_xy(x0 + sum(column_widths[:3]), y0)
-        pdf.multi_cell(column_widths[3], line_h, car_txt, 0, 'L')
+        # Características (label en negrita, valor normal)
+        x_car = x0 + sum(column_widths[:3])
+        y_car = y0
+        draw_label_value_in_cell(x_car, y_car, column_widths[3], line_h, pairs)
 
+        # Valor Total (derecha)
         pdf.set_xy(x0 + sum(column_widths[:4]), y0)
         pdf.multi_cell(column_widths[4], line_h, valor_total, 0, 'R')
 
@@ -427,7 +456,9 @@ def generar_pdf_cotizacion():
 
     pdf.ln(10)
 
+    # =======================
     # Totales
+    # =======================
     subtotal = sum(c['subtotal'] for c in st.session_state.cortinas_resumen)
     iva = sum(c['iva'] for c in st.session_state.cortinas_resumen)
     total_final = sum(c['total'] for c in st.session_state.cortinas_resumen)
@@ -990,6 +1021,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 

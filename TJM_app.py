@@ -269,30 +269,54 @@ def generar_pdf_cotizacion():
     pdf.add_page()
     pdf.set_auto_page_break(auto=True, margin=15)
 
-    # --- Datos del Cliente y Vendedor ---
+    # =======================
+    # Datos del Vendedor y Cliente
+    # =======================
     vendedor = st.session_state.datos_cotizacion.get('vendedor', {})
     cliente  = st.session_state.datos_cotizacion.get('cliente', {})
 
+    # Layout de dos columnas (90 mm cada una + 10 mm de separación = ancho útil 190 mm)
+    col_w = 90
+    gap = 10
+    x_left = pdf.l_margin
+    x_right = x_left + col_w + gap
+    y = pdf.get_y()
+
+    # Títulos de columna
     pdf.set_font('Arial', 'B', 12)
-    pdf.cell(90, 7, "Vendedor:", 0, 0, 'L')
-    pdf.cell(0, 7, "Cliente:", 0, 1, 'L')
+    pdf.set_xy(x_left, y);  pdf.cell(col_w, 7, "Vendedor:", 0, 0, 'L')
+    pdf.set_xy(x_right, y); pdf.cell(col_w, 7, "Cliente:", 0, 1, 'L')
+    y += 7
 
-    # Todo este bloque en negrita
-    pdf.set_font('Arial', 'B', 10)
-    pdf.cell(90, 5, f"Nombre: {vendedor.get('nombre', 'N/A')}", 0, 0, 'L')
-    pdf.cell(0, 5, f"Nombre: {cliente.get('nombre', 'N/A')}", 0, 1, 'L')
+    # Helper: imprime "Etiqueta: valor" con etiqueta en negrita y valor en regular
+    def label_value(x, y, label, value, width):
+        label = str(label).strip()
+        value = "" if value is None else str(value)
+        pdf.set_xy(x, y)
+        pdf.set_font('Arial', 'B', 10)
+        lw = pdf.get_string_width(label + " ") + 1  # ancho de la etiqueta
+        pdf.cell(lw, 5, label + " ", 0, 0, 'L')
+        pdf.set_font('Arial', '', 10)
+        pdf.cell(max(0, width - lw), 5, value, 0, 0, 'L')
 
-    pdf.cell(90, 5, f"Teléfono: {vendedor.get('telefono', 'N/A')}", 0, 0, 'L')
-    pdf.cell(0, 5, f"Teléfono: {cliente.get('telefono', 'N/A')}", 0, 1, 'L')
+    # Fila 1: Nombre
+    label_value(x_left,  y, "Nombre:",   vendedor.get('nombre', 'N/A'), col_w)
+    label_value(x_right, y, "Nombre:",   cliente.get('nombre', 'N/A'),  col_w)
+    y += 5
 
-    # No mostrar dirección del vendedor
-    pdf.cell(90, 5, "", 0, 0, 'L')
-    pdf.cell(0, 5, f"Cédula: {cliente.get('cedula', 'N/A')}", 0, 1, 'L')
+    # Fila 2: Teléfono
+    label_value(x_left,  y, "Teléfono:", vendedor.get('telefono', 'N/A'), col_w)
+    label_value(x_right, y, "Teléfono:", cliente.get('telefono', 'N/A'),  col_w)
+    y += 5
 
-    # (Opcional) Dirección del cliente: descomenta la línea de abajo si la quieres mostrar
-    # pdf.cell(90, 5, "", 0, 0, 'L'); pdf.cell(0, 5, f"Dirección: {cliente.get('direccion', 'N/A')}", 0, 1, 'L')
+    # Fila 3: (Vendedor sin dirección) / Cédula del cliente
+    # Izquierda vacía para mantener altura alineada
+    pdf.set_xy(x_left, y); pdf.cell(col_w, 5, "", 0, 0, 'L')
+    label_value(x_right, y, "Cédula:",   cliente.get('cedula', 'N/A'),    col_w)
+    y += 7
 
-    pdf.ln(10)
+    pdf.set_y(y)
+    pdf.ln(3)
 
     # =======================
     # Tabla de productos (sin columna Comentarios)
@@ -303,7 +327,7 @@ def generar_pdf_cotizacion():
 
     def draw_table_header():
         pdf.set_font('Arial', 'B', 9)
-        # Color #1e263b
+        # Encabezado color #1e263b
         pdf.set_fill_color(30, 38, 59)
         pdf.set_text_color(255)
         headers = ['N°', 'Nombre', 'Cant. / Ancho x Alto', 'Características', 'Valor Total']
@@ -314,7 +338,7 @@ def generar_pdf_cotizacion():
         pdf.set_font('Arial', '', 9)
 
     def wrap_text(text: str, col_w: float) -> str:
-        """Ajusta el texto al ancho de la columna (rompe palabras largas si es necesario)."""
+        """Ajusta el texto al ancho de la columna (rompe palabras largas si hace falta)."""
         text = "" if text is None else str(text)
         wrapped_lines = []
         for para in text.split("\n"):
@@ -364,7 +388,7 @@ def generar_pdf_cotizacion():
 
         # Envolver texto según ancho
         cant_txt = wrap_text(cant_raw, column_widths[2])
-        car_txt = wrap_text(caracteristicas_raw, column_widths[3])
+        car_txt  = wrap_text(caracteristicas_raw, column_widths[3])
 
         # Altura uniforme por fila
         max_lines = max(cant_txt.count("\n") + 1, car_txt.count("\n") + 1, 1)
@@ -966,6 +990,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 

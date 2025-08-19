@@ -293,17 +293,17 @@ def generar_pdf_cotizacion():
     header_h = 10
     line_h = 5  # alto por línea
 
-  def draw_table_header():
-    pdf.set_font('Arial', 'B', 9)
-    # Color #1e263b
-    pdf.set_fill_color(30, 38, 59)
-    pdf.set_text_color(255)
-    headers = ['N°', 'Nombre', 'Cant. / Ancho x Alto', 'Características', 'Valor Total']
-    for w, htxt in zip(column_widths, headers):
-        pdf.cell(w, header_h, htxt, 1, 0, 'C', 1)
-    pdf.ln(header_h)
-    pdf.set_text_color(0)
-    pdf.set_font('Arial', '', 9)
+    def draw_table_header():
+        pdf.set_font('Arial', 'B', 9)
+        # Color #1e263b (RGB 30, 38, 59)
+        pdf.set_fill_color(30, 38, 59)
+        pdf.set_text_color(255)
+        headers = ['N°', 'Nombre', 'Cant. / Ancho x Alto', 'Características', 'Valor Total']
+        for w, htxt in zip(column_widths, headers):
+            pdf.cell(w, header_h, htxt, 1, 0, 'C', 1)
+        pdf.ln(header_h)
+        pdf.set_text_color(0)
+        pdf.set_font('Arial', '', 9)
 
     def wrap_text(text: str, col_w: float) -> str:
         """Ajusta el texto al ancho de la columna (rompe palabras largas si es necesario)."""
@@ -958,6 +958,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 

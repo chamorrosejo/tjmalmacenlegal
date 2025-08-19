@@ -181,11 +181,12 @@ def load_telas_from_excel(path: str):
 # PDF (igual que antes)
 # =======================
 # Reemplaza la clase PDF(FPDF) completa con este código
+# Reemplaza la clase PDF(FPDF) completa con este código
 class PDF(FPDF):
     def header(self):
         try:
-            logo_path = os.path.join(SCRIPT_DIR, "Megatex.png")
-            # Posiciona el logo en la esquina superior izquierda
+            # Se corrige el nombre del archivo de la imagen
+            logo_path = os.path.join(SCRIPT_DIR, "logo.png")
             self.image(logo_path, 10, 8, 33)
         except Exception:
             pass
@@ -215,8 +216,7 @@ class PDF(FPDF):
         self.set_y(-15)
         self.set_font('Arial', 'I', 8)
         self.set_text_color(128)
-        self.cell(0, 10, f'Página {self.page_no()}', 0, 0, 'R')# =======================
-# App state & UI
+        self.cell(0, 10, f'Página {self.page_no()}', 0, 0, 'R')# App state & UI
 # =======================
 st.set_page_config(page_title="Almacén Legal Cotizador", page_icon="logo.png", layout="wide")
 
@@ -884,4 +884,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 

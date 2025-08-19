@@ -270,19 +270,27 @@ def generar_pdf_cotizacion():
     pdf.set_auto_page_break(auto=True, margin=15)
 
     # --- Datos del Cliente y Vendedor ---
+    vendedor = st.session_state.datos_cotizacion.get('vendedor', {})
+    cliente  = st.session_state.datos_cotizacion.get('cliente', {})
+
     pdf.set_font('Arial', 'B', 12)
     pdf.cell(90, 7, "Vendedor:", 0, 0, 'L')
     pdf.cell(0, 7, "Cliente:", 0, 1, 'L')
 
-    pdf.set_font('Arial', '', 10)
-    pdf.cell(90, 5, f"Nombre: {st.session_state.datos_cotizacion['vendedor'].get('nombre', 'N/A')}", 0, 0, 'L')
-    pdf.cell(0, 5, f"Nombre: {st.session_state.datos_cotizacion['cliente'].get('nombre', 'N/A')}", 0, 1, 'L')
+    # Todo este bloque en negrita
+    pdf.set_font('Arial', 'B', 10)
+    pdf.cell(90, 5, f"Nombre: {vendedor.get('nombre', 'N/A')}", 0, 0, 'L')
+    pdf.cell(0, 5, f"Nombre: {cliente.get('nombre', 'N/A')}", 0, 1, 'L')
 
-    pdf.cell(90, 5, f"Teléfono: {st.session_state.datos_cotizacion['vendedor'].get('telefono', 'N/A')}", 0, 0, 'L')
-    pdf.cell(0, 5, f"Teléfono: {st.session_state.datos_cotizacion['cliente'].get('telefono', 'N/A')}", 0, 1, 'L')
+    pdf.cell(90, 5, f"Teléfono: {vendedor.get('telefono', 'N/A')}", 0, 0, 'L')
+    pdf.cell(0, 5, f"Teléfono: {cliente.get('telefono', 'N/A')}", 0, 1, 'L')
 
-    pdf.cell(90, 5, f"Dirección: {st.session_state.datos_cotizacion['cliente'].get('direccion', 'N/A')}", 0, 0, 'L')
-    pdf.cell(0, 5, f"Cédula: {st.session_state.datos_cotizacion['cliente'].get('cedula', 'N/A')}", 0, 1, 'L')
+    # No mostrar dirección del vendedor
+    pdf.cell(90, 5, "", 0, 0, 'L')
+    pdf.cell(0, 5, f"Cédula: {cliente.get('cedula', 'N/A')}", 0, 1, 'L')
+
+    # (Opcional) Dirección del cliente: descomenta la línea de abajo si la quieres mostrar
+    # pdf.cell(90, 5, "", 0, 0, 'L'); pdf.cell(0, 5, f"Dirección: {cliente.get('direccion', 'N/A')}", 0, 1, 'L')
 
     pdf.ln(10)
 
@@ -291,11 +299,11 @@ def generar_pdf_cotizacion():
     # =======================
     column_widths = [10, 50, 40, 65, 25]  # N°, Nombre, Cant/Dim, Características, Total
     header_h = 10
-    line_h = 5  # alto por línea
+    line_h = 5
 
     def draw_table_header():
         pdf.set_font('Arial', 'B', 9)
-        # Color #1e263b (RGB 30, 38, 59)
+        # Color #1e263b
         pdf.set_fill_color(30, 38, 59)
         pdf.set_text_color(255)
         headers = ['N°', 'Nombre', 'Cant. / Ancho x Alto', 'Características', 'Valor Total']
@@ -958,6 +966,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 

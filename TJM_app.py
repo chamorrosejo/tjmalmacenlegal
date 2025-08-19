@@ -294,7 +294,7 @@ def generar_pdf_cotizacion():
     header_h = 10
     line_h = 5  # alto por línea dentro del texto
 
-    def draw_table_header():
+   def draw_table_header():
     pdf.set_font('Arial', 'B', 9)
     # Color #313a75
     pdf.set_fill_color(49, 58, 117)
@@ -305,6 +305,7 @@ def generar_pdf_cotizacion():
     pdf.ln(header_h)
     pdf.set_text_color(0)
     pdf.set_font('Arial', '', 9)
+
 
     # Ajusta texto al ancho real de la columna (con ruptura dura si hay palabras largas)
     def wrap_text(text: str, col_w: float) -> str:
@@ -961,6 +962,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 

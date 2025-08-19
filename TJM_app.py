@@ -184,6 +184,7 @@ def load_telas_from_excel(path: str):
 # Reemplaza la clase PDF(FPDF) completa con este código
 # Reemplaza la clase PDF(FPDF) completa con este código
 # Reemplaza la clase PDF(FPDF) completa con este código
+# Reemplaza la clase PDF(FPDF) completa con este código
 class PDF(FPDF):
     def header(self):
         try:
@@ -194,13 +195,13 @@ class PDF(FPDF):
             pass
 
         # Posiciona el texto "Almacén Legal"
-        self.set_xy(45, 17) # Ajusta la posición vertical
+        self.set_xy(45, 17)
         self.set_font('Arial', '', 14)
         self.set_text_color(22, 57, 126) # Color azul oscuro
         self.cell(0, 10, 'Almacén Legal', 0, 1)
 
-        # Posiciona el título "COTIZACIÓN"
-        self.set_xy(45, 23) # Ajusta la posición vertical
+        # Posiciona el título "COTIZACIÓN" un poco más abajo
+        self.set_xy(45, 25) # Ajusta la posición vertical
         self.set_font('Arial', 'B', 24)
         self.set_text_color(22, 57, 126) # Color azul oscuro
         self.cell(0, 10, 'COTIZACIÓN', 0, 1)
@@ -211,20 +212,21 @@ class PDF(FPDF):
         mes_nombre = meses[fecha_actual.month - 1]
         fecha_larga = f"Fecha: {mes_nombre} {fecha_actual.day}, {fecha_actual.year}"
 
-        # Posiciona la fecha, alineada a la derecha de la página
-        self.set_xy(140, 27) # Ajusta la posición vertical
+        # Posiciona la fecha debajo del título y alineada a la izquierda
+        self.set_xy(45, 35) # Ajusta la posición vertical
         self.set_font('Arial', '', 10)
         self.set_text_color(128) # Color gris
-        self.cell(0, 5, fecha_larga, 0, 1, 'R')
+        self.cell(0, 5, fecha_larga, 0, 1, 'L')
 
         # Deja espacio para que el contenido de la página empiece más abajo
-        self.ln(20)
+        self.ln(10)
 
     def footer(self):
         self.set_y(-15)
         self.set_font('Arial', 'I', 8)
         self.set_text_color(128)
         self.cell(0, 10, f'Página {self.page_no()}', 0, 0, 'R')
+
 # =======================
 st.set_page_config(page_title="Almacén Legal Cotizador", page_icon="logo.png", layout="wide")
 
@@ -892,6 +894,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 

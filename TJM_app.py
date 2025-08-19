@@ -246,56 +246,82 @@ def duplicar_cortina(index):
     st.session_state.cortinas_resumen.append(cortina_duplicada)
     st.success("¡Cortina duplicada y añadida al resumen!")
 
+# Reemplaza la función generar_pdf_cotizacion() con este código
 def generar_pdf_cotizacion():
     pdf = PDF()
     pdf.alias_nb_pages()
     pdf.add_page()
-    pdf.set_font('Arial', '', 12)
+    pdf.set_auto_page_break(auto=True, margin=15)
     
-    cliente = st.session_state.datos_cotizacion['cliente']
-    vendedor = st.session_state.datos_cotizacion['vendedor']
-    pdf.set_text_color(0)
-    pdf.cell(0, 10, f"Cliente: {cliente.get('nombre', 'N/A')}", 0, 1)
-    pdf.cell(0, 10, f"Vendedor: {vendedor.get('nombre', 'N/A')}", 0, 1)
-    pdf.ln(10)
-    
+    # --- Datos del Cliente y Vendedor (diseño de tabla) ---
     pdf.set_font('Arial', 'B', 12)
-    pdf.cell(0, 10, 'Detalle de Productos:', 0, 1)
+    pdf.cell(90, 7, "Vendedor:", 0, 0, 'L')
+    pdf.cell(0, 7, "Cliente:", 0, 1, 'L')
+    
     pdf.set_font('Arial', '', 10)
+    pdf.cell(90, 5, f"Nombre: {st.session_state.datos_cotizacion['vendedor'].get('nombre', 'N/A')}", 0, 0, 'L')
+    pdf.cell(0, 5, f"Nombre: {st.session_state.datos_cotizacion['cliente'].get('nombre', 'N/A')}", 0, 1, 'L')
     
-    for i, cortina in enumerate(st.session_state.cortinas_resumen):
-        pdf.multi_cell(0, 5, f"Cortina #{i+1}: {cortina['diseno']}", 0, 1)
-        ancho_calc = cortina['ancho'] * cortina['multiplicador']
-        pdf.multi_cell(0, 5, f"  - Dimensiones: {ancho_calc:.2f} x {cortina['alto']:.2f} m", 0, 1)
-        pdf.multi_cell(0, 5, f"  - Cantidad: {cortina['cantidad']} und", 0, 1)
-        
-        if cortina['telas']['tela1']:
-            tela1_info = cortina['telas']['tela1']
-            pdf.multi_cell(0, 5, f"  - Tela 1: {tela1_info['referencia']} - {tela1_info['color']} [{tela1_info['modo_confeccion']}]", 0, 1)
-        if cortina['telas'].get('tela2') and cortina['telas']['tela2'].get('referencia'):
-            tela2_info = cortina['telas']['tela2']
-            pdf.multi_cell(0, 5, f"  - Tela 2: {tela2_info['referencia']} - {tela2_info['color']} [{tela2_info['modo_confeccion']}]", 0, 1)
-        
-        insumos_sel = cortina.get('insumos_seleccion', {})
-        if insumos_sel:
-            for insumo, info in insumos_sel.items():
-                pdf.multi_cell(0, 5, f"  - Insumo: {insumo} ({info['ref']} - {info['color']})", 0, 1)
+    pdf.cell(90, 5, f"Teléfono: {st.session_state.datos_cotizacion['vendedor'].get('telefono', 'N/A')}", 0, 0, 'L')
+    pdf.cell(0, 5, f"Teléfono: {st.session_state.datos_cotizacion['cliente'].get('telefono', 'N/A')}", 0, 1, 'L')
 
-        pdf.multi_cell(0, 5, f"  - Total Cortina: ${int(cortina['total']):,}", 0, 1)
-        pdf.ln(5)
+    pdf.cell(90, 5, f"Dirección: {st.session_state.datos_cotizacion['cliente'].get('direccion', 'N/A')}", 0, 0, 'L')
+    pdf.cell(0, 5, f"Cédula: {st.session_state.datos_cotizacion['cliente'].get('cedula', 'N/A')}", 0, 1, 'L')
     
+    pdf.ln(10)
+
+    # --- Detalle de Productos ---
+    for i, cortina in enumerate(st.session_state.cortinas_resumen):
+        # Título de la cortina
+        pdf.set_font('Arial', 'B', 12)
+        pdf.cell(0, 7, f"CORTINA {i+1}:", 0, 1)
+        pdf.ln(2)
+        
+        # Fila de Dimensiones, Cantidad y Diseño
+        pdf.set_font('Arial', '', 10)
+        ancho_calc = cortina['ancho'] * cortina['multiplicador']
+        dim_cant_diseno = f"Dimensiones: {ancho_calc:.2f}x{cortina['alto']:.2f} m | Cantidad: {cortina['cantidad']} und | Diseño: {cortina['diseno']}"
+        pdf.cell(0, 5, dim_cant_diseno, 0, 1)
+        pdf.ln(5)
+
+        # Encabezados de la tabla de insumos
+        pdf.set_font('Arial', 'B', 10)
+        pdf.cell(100, 7, 'Insumo', 1, 0)
+        pdf.cell(45, 7, 'Vr. Unit.', 1, 0, 'R')
+        pdf.cell(45, 7, 'Vr. Total', 1, 1, 'R')
+        
+        # Filas de la tabla de insumos
+        pdf.set_font('Arial', '', 10)
+        for insumo in cortina['detalle_insumos']:
+            pdf.cell(100, 7, f" {insumo['Insumo']}", 1, 0)
+            pdf.cell(45, 7, f"${int(insumo['P.V.P/Unit ($)']):,}", 1, 0, 'R')
+            pdf.cell(45, 7, f"${int(insumo['Precio ($)']):,}", 1, 1, 'R')
+        
+        # Totales de la cortina individual
+        pdf.set_font('Arial', 'B', 10)
+        pdf.cell(100, 7, "", 0, 0)
+        pdf.cell(45, 7, "Subtotal Cortina", 1, 0, 'R')
+        pdf.cell(45, 7, f"${int(cortina['subtotal']):,}", 1, 1, 'R')
+        pdf.cell(100, 7, "", 0, 0)
+        pdf.cell(45, 7, f"IVA ({IVA_PERCENT:.0%})", 1, 0, 'R')
+        pdf.cell(45, 7, f"${int(cortina['iva']):,}", 1, 1, 'R')
+        pdf.cell(100, 7, "", 0, 0)
+        pdf.cell(45, 7, "Vr. Total Cortina", 1, 0, 'R')
+        pdf.cell(45, 7, f"${int(cortina['total']):,}", 1, 1, 'R')
+        pdf.ln(10)
+    
+    # --- Totales Finales de la Cotización ---
     total_final = sum(c['total'] for c in st.session_state.cortinas_resumen)
     iva = total_final * IVA_PERCENT
     subtotal = total_final - iva
     
     pdf.set_font('Arial', 'B', 12)
-    pdf.cell(0, 10, f"Subtotal: ${int(subtotal):,}", 0, 1, 'R')
-    pdf.cell(0, 10, f"IVA ({IVA_PERCENT:.0%}): ${int(iva):,}", 0, 1, 'R')
-    pdf.set_font('Arial', 'B', 14)
-    pdf.cell(0, 10, f"TOTAL: ${int(total_final):,}", 0, 1, 'R')
+    pdf.cell(0, 10, f"Vr. Total Cotización: ${int(total_final):,}", 0, 1, 'R')
+    pdf.set_font('Arial', 'B', 10)
+    pdf.cell(0, 7, f"IVA Total ({IVA_PERCENT:.0%}): ${int(iva):,}", 0, 1, 'R')
+    pdf.cell(0, 7, f"Subtotal Total: ${int(subtotal):,}", 0, 1, 'R')
 
     return pdf.output(dest='S').encode('latin-1')
-
 def sidebar():
     with st.sidebar:
         st.image("logo.png") 
@@ -844,3 +870,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

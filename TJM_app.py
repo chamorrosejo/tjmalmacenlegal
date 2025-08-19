@@ -262,6 +262,7 @@ def duplicar_cortina(index):
     st.success("¡Cortina duplicada y añadida al resumen!")
 
 # Reemplaza la función generar_pdf_cotizacion() con este código
+# Reemplaza la función generar_pdf_cotizacion() con este código
 def generar_pdf_cotizacion():
     pdf = PDF()
     pdf.alias_nb_pages()
@@ -300,7 +301,6 @@ def generar_pdf_cotizacion():
     
     pdf.set_font('Arial', '', 9)
     pdf.set_text_color(0)
-    pdf.set_fill_color(255)
     
     # Filas de la tabla
     for i, cortina in enumerate(st.session_state.cortinas_resumen):
@@ -321,8 +321,10 @@ def generar_pdf_cotizacion():
         # Datos para cada celda
         num = str(i + 1)
         nombre = cortina['diseno']
+        
         ancho_calc = cortina['ancho'] * cortina['multiplicador']
         cant_ancho_alto = f"{cortina['cantidad']} und\n{ancho_calc:.2f} x {cortina['alto']:.2f} mts"
+        
         valor_total = f"${int(cortina['total']):,}"
         comentarios = ""
 
@@ -334,10 +336,11 @@ def generar_pdf_cotizacion():
         x_pos_start = pdf.get_x()
         y_pos_start = pdf.get_y()
         
-        # Dibujar celdas y bordes
+        # Dibujar cada celda en la fila
         pdf.cell(column_widths[0], row_height, num, 1, 0, 'C')
         pdf.cell(column_widths[1], row_height, nombre, 1, 0)
         
+        # Usar multi_cell para las celdas con varias líneas, reposicionando el cursor
         pdf.set_xy(x_pos_start + sum(column_widths[:2]), y_pos_start)
         pdf.multi_cell(column_widths[2], 4, cant_ancho_alto, 1, 'L')
         
@@ -345,11 +348,11 @@ def generar_pdf_cotizacion():
         pdf.multi_cell(column_widths[3], 4, caracteristicas, 1, 'L')
         
         pdf.set_xy(x_pos_start + sum(column_widths[:4]), y_pos_start)
-        pdf.cell(column_widths[4], row_height, valor_total, 1, 0, 'R')
+        pdf.multi_cell(column_widths[4], 4, valor_total, 1, 'R')
         
         pdf.set_xy(x_pos_start + sum(column_widths[:5]), y_pos_start)
-        pdf.multi_cell(column_widths[5], 4, comentarios, 1, 'L')
-
+        pdf.multi_cell(column_widths[5], 4, comentarios, 1, 'L', 0)
+        
     pdf.ln(10)
     
     # --- Totales Finales de la Cotización ---
@@ -364,8 +367,6 @@ def generar_pdf_cotizacion():
     pdf.cell(0, 10, f"Vr. Total: ${int(total_final):,}", 0, 1, 'R')
 
     return pdf.output(dest='S').encode('latin-1')
-    return pdf.output(dest='S').encode('latin-1')
-
 def sidebar():
     with st.sidebar:
         st.image("logo.png") 
@@ -914,4 +915,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 

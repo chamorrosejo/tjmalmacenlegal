@@ -182,31 +182,43 @@ def load_telas_from_excel(path: str):
 # =======================
 class PDF(FPDF):
     def header(self):
+        # Logo (igual)
         try:
             logo_path = os.path.join(SCRIPT_DIR, "logo.png")
             self.image(logo_path, 10, 8, 33)
         except Exception:
             pass
 
+        # Color del encabezado de la tabla: #1e263b (RGB 30,38,59)
+        R, G, B = 30, 38, 59
+
+        # "Almacén Legal" en negrita y color #1e263b
         self.set_xy(45, 17)
-        self.set_font('Arial', '', 14)
-        self.set_text_color(22, 57, 126)
+        self.set_font('Arial', 'B', 14)
+        self.set_text_color(R, G, B)
         self.cell(0, 10, 'Almacén Legal', 0, 1)
 
+        # "COTIZACIÓN" en negrita y color #1e263b
         self.set_xy(45, 25)
         self.set_font('Arial', 'B', 24)
-        self.set_text_color(22, 57, 126)
+        self.set_text_color(R, G, B)
         self.cell(0, 10, 'COTIZACIÓN', 0, 1)
 
-        meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
+        # Fecha: etiqueta en negrita + valor en regular, ambos con el mismo color
+        meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+                 "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
         fecha_actual = datetime.now()
         mes_nombre = meses[fecha_actual.month - 1]
-        fecha_larga = f"Fecha: {mes_nombre} {fecha_actual.day}, {fecha_actual.year}"
+        fecha_valor = f"{mes_nombre} {fecha_actual.day}, {fecha_actual.year}"
 
         self.set_xy(45, 35)
+        self.set_text_color(R, G, B)
+        self.set_font('Arial', 'B', 10)
+        etiqueta = "Fecha: "
+        ancho_etiqueta = self.get_string_width(etiqueta) + 1
+        self.cell(ancho_etiqueta, 5, etiqueta, 0, 0, 'L')
         self.set_font('Arial', '', 10)
-        self.set_text_color(128)
-        self.cell(0, 5, fecha_larga, 0, 1, 'L')
+        self.cell(0, 5, fecha_valor, 0, 1, 'L')
 
         self.ln(10)
 
@@ -1017,6 +1029,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 

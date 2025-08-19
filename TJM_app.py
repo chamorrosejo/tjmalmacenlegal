@@ -182,32 +182,33 @@ def load_telas_from_excel(path: str):
 # =======================
 # Reemplaza la clase PDF(FPDF) completa con este código
 # Reemplaza la clase PDF(FPDF) completa con este código
+# Reemplaza la clase PDF(FPDF) completa con este código
 class PDF(FPDF):
     def header(self):
         try:
-            # Se corrige el nombre del archivo de la imagen
             logo_path = os.path.join(SCRIPT_DIR, "logo.png")
+            # Posiciona el logo en la esquina superior izquierda
             self.image(logo_path, 10, 8, 33)
         except Exception:
             pass
 
         # Posiciona el texto "Almacén Legal"
-        self.set_xy(45, 14)
+        self.set_xy(45, 16.5) # Ajusta la posición vertical
         self.set_font('Arial', '', 14)
         self.set_text_color(0, 80, 180)
         self.cell(0, 10, 'Almacén Legal', 0, 1)
 
         # Posiciona el título "COTIZACIÓN"
-        self.set_xy(45, 20)
+        self.set_xy(45, 22.5) # Ajusta la posición vertical
         self.set_font('Arial', 'B', 30)
         self.set_text_color(0, 80, 180)
         self.cell(0, 10, 'COTIZACIÓN', 0, 1)
 
-        # Posiciona la fecha, alineada con el título
-        self.set_xy(140, 25)
+        # Posiciona la fecha, alineada a la derecha de la página
+        self.set_y(25) # Ajusta la posición vertical de la fecha
         self.set_font('Arial', '', 10)
         self.set_text_color(128)
-        self.cell(0, 5, f"Fecha: {datetime.now().strftime('%Y-%m-%d')}", 0, 1)
+        self.cell(0, 5, f"Fecha: {datetime.now().strftime('%Y-%m-%d')}", 0, 1, 'R')
 
         # Deja espacio para que el contenido de la página empiece más abajo
         self.ln(20)
@@ -216,8 +217,7 @@ class PDF(FPDF):
         self.set_y(-15)
         self.set_font('Arial', 'I', 8)
         self.set_text_color(128)
-        self.cell(0, 10, f'Página {self.page_no()}', 0, 0, 'R')# App state & UI
-# =======================
+        self.cell(0, 10, f'Página {self.page_no()}', 0, 0, 'R')# =======================
 st.set_page_config(page_title="Almacén Legal Cotizador", page_icon="logo.png", layout="wide")
 
 TABLA_DISENOS, TIPOS_CORTINA, PRECIOS_MANO_DE_OBRA, DISENOS_A_TIPOS, DF_DISENOS = load_designs_from_excel(DESIGNS_XLSX_PATH)
@@ -884,5 +884,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 

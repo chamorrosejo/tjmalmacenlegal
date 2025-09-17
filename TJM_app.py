@@ -55,40 +55,44 @@ def get_image_path(tela_num):
     """
     Construye la ruta a la imagen de la cortina, considerando el Diseño y la Tela.
     Si no encuentra una imagen específica, devuelve la ruta a un placeholder.
+
+    Cambios realizados:
+    - Se limpian (normalizan) diseño, tipo de tela, referencia y color para que
+      coincidan con las carpetas/archivos.
+    - Se intenta con extensiones .jpg y .png.
+    - Se usa el tipo de tela LIMPIO en la ruta de carpeta.
     """
     diseno = st.session_state.get("diseno_sel")
     tipo_tela = st.session_state.get(f"tipo_tela_sel_{tela_num}")
     ref = st.session_state.get(f"ref_tela_sel_{tela_num}")
     color = st.session_state.get(f"color_tela_sel_{tela_num}")
 
+    placeholder = os.path.join(SCRIPT_DIR, "imagenes", "placeholder.png")
+
     # Si falta alguna selección, devuelve el placeholder
     if not all([diseno, tipo_tela, ref, color]):
-        return os.path.join(SCRIPT_DIR, "imagenes", "placeholder.png")
+        return placeholder
 
-    # Limpiamos los nombres para que coincidan con los de las carpetas/archivos
-    diseno_cleaned = diseno.replace(" ", "_").upper()
-    tipo_tela_cleaned = tipo_tela.replace(" ", "_")
-    ref_cleaned = ref.replace(" ", "_").replace(".", "")
-    color_cleaned = color.replace(" ", "_")
-    
-    # Construimos el nombre del archivo como se solicitó
-    image_filename = f"{tipo_tela_cleaned} - {ref_cleaned} - {color_cleaned}.jpg"
+    # Limpiar nombres
+    diseno_cleaned = str(diseno).strip().replace(" ", "_").upper()
+    tipo_tela_cleaned = str(tipo_tela).strip().replace(" ", "_")
+    ref_cleaned = str(ref).strip().replace(" ", "_").replace(".", "")
+    color_cleaned = str(color).strip().replace(" ", "_")
 
-    # Construimos la ruta ideal y más específica
-    specific_image_path = os.path.join(
-        SCRIPT_DIR, 
-        "imagenes", 
-        "cortinas",
-        diseno_cleaned,
-        tipo_tela,
-        image_filename
-    )
+    # Nombre base del archivo
+    base_name = f"{tipo_tela_cleaned} - {ref_cleaned} - {color_cleaned}"
 
-    # LÓGICA CLAVE: Si la ruta específica NO existe, devuelve la ruta del placeholder
-    if os.path.exists(specific_image_path):
-        return specific_image_path
-    else:
-        return os.path.join(SCRIPT_DIR, "imagenes", "placeholder.png")
+    # Rutas candidatas (intenta .jpg y .png)
+    candidates = [
+        os.path.join(SCRIPT_DIR, "imagenes", "cortinas", diseno_cleaned, tipo_tela_cleaned, base_name + ".jpg"),
+        os.path.join(SCRIPT_DIR, "imagenes", "cortinas", diseno_cleaned, tipo_tela_cleaned, base_name + ".png"),
+    ]
+
+    for p in candidates:
+        if os.path.exists(p):
+            return p
+
+    return placeholder
 
 # =======================
 # Loading

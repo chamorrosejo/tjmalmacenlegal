@@ -51,6 +51,7 @@ DISTANCIA_OJALES_DEF = 0.14
 # =======================
 # Función para Imagen
 # =======================
+# Reemplaza esta función
 def get_image_path(tela_num):
     """
     Construye la ruta a la imagen de la cortina, considerando el Diseño y la Tela.
@@ -62,7 +63,8 @@ def get_image_path(tela_num):
     color = st.session_state.get(f"color_tela_sel_{tela_num}")
 
     if not all([diseno, tipo_tela, ref, color]):
-        return os.path.join(SCRIPT_DIR, "imagenes", "placeholder.jpg")
+        # CAMBIO AQUÍ: Ahora busca .png por defecto
+        return os.path.join(SCRIPT_DIR, "imagenes", "placeholder.png")
 
     diseno_cleaned = diseno.replace(" ", "_").upper()
     tipo_tela_cleaned = tipo_tela.replace(" ", "_")
@@ -83,7 +85,8 @@ def get_image_path(tela_num):
     if os.path.exists(specific_image_path):
         return specific_image_path
     else:
-        return os.path.join(SCRIPT_DIR, "imagenes", "placeholder.jpg")
+        # CAMBIO AQUÍ: Ahora busca .png como fallback
+        return os.path.join(SCRIPT_DIR, "imagenes", "placeholder.png")
 
 # =======================
 # Loading
@@ -334,6 +337,7 @@ def pantalla_gestion_datos():
     # (Tu función `pantalla_gestion_datos` va aquí, sin cambios)
     pass # Reemplaza este 'pass' con tu código original
 
+# Reemplaza tu función `pantalla_cotizador` con esta versión
 def pantalla_cotizador():
     st.header("Crea la Cortina")
     
@@ -381,10 +385,16 @@ def pantalla_cotizador():
     image_path = get_image_path("1")
     if os.path.exists(image_path):
         caption = os.path.basename(image_path)
-        if "placeholder.jpg" in caption: caption = "Vista previa no disponible"
-        st.image(image_path, caption=caption, use_column_width=True)
+        
+        # CAMBIO 1: Buscamos "placeholder.png" en lugar de .jpg
+        if "placeholder.png" in caption: 
+            caption = "Vista previa no disponible"
+            
+        # CAMBIO 2: Usamos use_container_width en lugar de use_column_width
+        st.image(image_path, caption=caption, use_container_width=True)
     else:
-        st.warning("No se encontró la imagen. Asegúrate que 'placeholder.jpg' exista en la carpeta 'imagenes'.")
+        # CAMBIO 3: El mensaje de advertencia ahora pide .png
+        st.warning("No se encontró la imagen. Asegúrate que 'placeholder.png' exista en la carpeta 'imagenes'.")
 
     st.markdown("---")
     st.subheader("Insumos de la Cortina")
@@ -428,3 +438,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

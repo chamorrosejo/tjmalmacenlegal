@@ -51,28 +51,30 @@ DISTANCIA_OJALES_DEF = 0.14
 # =======================
 # Función para Imagen
 # =======================
-# Reemplaza esta función
 def get_image_path(tela_num):
     """
     Construye la ruta a la imagen de la cortina, considerando el Diseño y la Tela.
-    El nombre del archivo será: TipoDeTela - Referencia - Color.jpg
+    Si no encuentra una imagen específica, devuelve la ruta a un placeholder.
     """
     diseno = st.session_state.get("diseno_sel")
     tipo_tela = st.session_state.get(f"tipo_tela_sel_{tela_num}")
     ref = st.session_state.get(f"ref_tela_sel_{tela_num}")
     color = st.session_state.get(f"color_tela_sel_{tela_num}")
 
+    # Si falta alguna selección, devuelve el placeholder
     if not all([diseno, tipo_tela, ref, color]):
-        # CAMBIO AQUÍ: Ahora busca .png por defecto
         return os.path.join(SCRIPT_DIR, "imagenes", "placeholder.png")
 
+    # Limpiamos los nombres para que coincidan con los de las carpetas/archivos
     diseno_cleaned = diseno.replace(" ", "_").upper()
     tipo_tela_cleaned = tipo_tela.replace(" ", "_")
     ref_cleaned = ref.replace(" ", "_").replace(".", "")
     color_cleaned = color.replace(" ", "_")
     
+    # Construimos el nombre del archivo como se solicitó
     image_filename = f"{tipo_tela_cleaned} - {ref_cleaned} - {color_cleaned}.jpg"
 
+    # Construimos la ruta ideal y más específica
     specific_image_path = os.path.join(
         SCRIPT_DIR, 
         "imagenes", 
@@ -82,10 +84,10 @@ def get_image_path(tela_num):
         image_filename
     )
 
+    # LÓGICA CLAVE: Si la ruta específica NO existe, devuelve la ruta del placeholder
     if os.path.exists(specific_image_path):
         return specific_image_path
     else:
-        # CAMBIO AQUÍ: Ahora busca .png como fallback
         return os.path.join(SCRIPT_DIR, "imagenes", "placeholder.png")
 
 # =======================
@@ -114,9 +116,11 @@ def load_designs_from_excel(path: str):
         mult = _safe_float(row["Multiplicador"], 1.0)
         mo_val = _safe_float(row["PVP M.O."], 0.0)
 
+        # --- VERSIÓN CORREGIDA DEL ERROR DE SINTAXIS ---
         tabla_disenos[dis] = mult
         precios_mo[f"M.O: {dis}"] = {"unidad": "MT", "pvp": mo_val}
         disenos_a_tipos.setdefault(dis, [])
+        # --- FIN DE LA CORRECIÓN ---
 
         for t in tipos:
             tipos_cortina.setdefault(t, [])
@@ -148,7 +152,15 @@ def load_bom_from_excel(path: str):
     for _, row in df.iterrows():
         p_raw = row.get("Parametro", "")
         param_norm = "" if pd.isna(p_raw) or (isinstance(p_raw, str) and p_raw.strip().lower() in ("", "nan", "none")) else str(p_raw).strip()
-        item = { "Insumo": str(row["Insumo"]).strip(), "Unidad": str(row["Unidad"]).strip().upper(), "ReglaCantidad": str(row["ReglaCantidad"]).strip().upper(), "Parametro": param_norm, "DependeDeSeleccion": str(row["DependeDeSeleccion"]).strip().upper(), "Observaciones": "" if pd.isna(row.get("Observaciones", "")) else str(row.get("Observaciones", ""))}
+
+        item = {
+            "Insumo": str(row["Insumo"]).strip(),
+            "Unidad": str(row["Unidad"]).strip().upper(),
+            "ReglaCantidad": str(row["ReglaCantidad"]).strip().upper(),
+            "Parametro": param_norm,
+            "DependeDeSeleccion": str(row["DependeDeSeleccion"]).strip().upper(),
+            "Observaciones": "" if pd.isna(row.get("Observaciones", "")) else str(row.get("Observaciones", "")),
+        }
         dis = str(row["Diseño"]).strip()
         bom_dict.setdefault(dis, []).append(item)
     return bom_dict, df
@@ -169,7 +181,8 @@ def load_catalog_from_excel(path: str):
     for _, row in df.iterrows():
         insumo, unidad, ref, color, pvp = str(row["Insumo"]).strip(), str(row["Unidad"]).strip().upper(), str(row["Ref"]).strip(), str(row["Color"]).strip(), _safe_float(row["PVP"], 0.0)
         catalog.setdefault(insumo, {"unidad": unidad, "opciones": []})
-        if not catalog[insumo].get("unidad"): catalog[insumo]["unidad"] = unidad
+        if not catalog[insumo].get("unidad"):
+            catalog[insumo]["unidad"] = unidad
         catalog[insumo]["opciones"].append({"ref": ref, "color": color, "pvp": pvp})
     return catalog
 
@@ -188,10 +201,9 @@ def load_telas_from_excel(path: str):
     telas = {}
     for _, row in df.iterrows():
         tipo, ref, color, pvp = str(row["TipoTela"]).strip(), str(row["Referencia"]).strip(), str(row["Color"]).strip(), _safe_float(row["PVP/Metro ($)"], 0.0)
-        telas.setdefault(tipo, {}); telas[tipo].setdefault(ref, [])
-        tela_info = {"color": color, "pvp": pvp}
-        if tela_info not in telas[tipo][ref]:
-            telas[tipo][ref].append(tela_info)
+        telas.setdefault(tipo, {})
+        telas[tipo].setdefault(ref, [])
+        telas[tipo][ref].append({"color": color, "pvp": pvp})
     return telas
 
 # =======================
@@ -322,22 +334,69 @@ def mostrar_insumos_bom(diseno_sel: str):
             else: st.warning(f"{nombre}: marcado como 'DependeDeSeleccion' pero no está en el Catálogo de Insumos.")
 
 def calcular_y_mostrar_cotizacion():
-    # (Tu función `calcular_y_mostrar_cotizacion` va aquí, sin cambios)
-    pass # Reemplaza este 'pass' con tu código original
+    diseno = st.session_state.diseno_sel
+    ancho = _safe_float(st.session_state.ancho, 0.0); alto = _safe_float(st.session_state.alto, 0.0)
+    multiplicador = _safe_float(st.session_state.multiplicador, 1.0); num_cortinas = int(st.session_state.cantidad)
+    detalle_insumos, subtotal = [], 0.0
+    for item in BOM_DICT.get(diseno, []):
+        nombre, unidad, regla, param = item["Insumo"].strip().upper(), item["Unidad"].upper(), item["ReglaCantidad"].upper(), item["Parametro"]
+        if regla == "MT_ANCHO_X_MULT": cantidad = ancho * multiplicador * _safe_float(param, 1.0)
+        elif regla == "UND_OJALES_PAR": cantidad = ceil_to_even((ancho * multiplicador) / _safe_float(param, DISTANCIA_OJALES_DEF))
+        elif regla == "UND_BOTON_PAR": cantidad = ceil_to_even((ancho * multiplicador) / _safe_float(param, DISTANCIA_BOTON_DEF))
+        elif regla == "FIJO": cantidad = _safe_float(param, 0.0)
+        else: st.error(f"ReglaCantidad '{regla}' no soportada."); st.stop()
+        cantidad_total = cantidad * num_cortinas
+        if nombre == "TELA 1":
+            pvp = _safe_float(st.session_state.get("pvp_tela_1"), 0.0); ref = st.session_state.get("ref_tela_sel_1", ""); color = st.session_state.get("color_tela_sel_1", "")
+            nombre_mostrado, uni = f"TELA 1: {ref} - {color}", "MT"
+        elif nombre == "TELA 2":
+            pvp = _safe_float(st.session_state.get("pvp_tela_2"), 0.0); ref = st.session_state.get("ref_tela_sel_2", ""); color = st.session_state.get("color_tela_sel_2", "")
+            nombre_mostrado, uni = f"TELA 2: {ref} - {color}", "MT"
+        elif nombre.startswith("M.O"): continue
+        else:
+            sel = st.session_state.get("insumos_seleccion", {}).get(item["Insumo"], {})
+            pvp, uni, nombre_mostrado = _safe_float(sel.get("pvp"), 0.0), sel.get("unidad", unidad), item["Insumo"]
+        precio_total = pvp * cantidad_total; subtotal += precio_total
+        detalle_insumos.append({"Insumo": nombre_mostrado, "Unidad": uni, "Cantidad": round(cantidad_total, 2) if uni != "UND" else int(round(cantidad_total)), "P.V.P/Unit ($)": pvp, "Precio ($)": round(precio_total)})
+    mo_key_candidates = [f"M.O: {diseno}", f"M.O. {diseno}"]; mo_info, mo_key = None, None
+    for k in mo_key_candidates:
+        if k in PRECIOS_MANO_DE_OBRA: mo_key = k; mo_info = PRECIOS_MANO_DE_OBRA[k]; break
+    if mo_info and _safe_float(mo_info.get("pvp"), 0) > 0:
+        cant_mo, pvp_mo = ancho * multiplicador * num_cortinas, _safe_float(mo_info["pvp"], 0.0)
+        precio_mo = round(cant_mo * pvp_mo); subtotal += precio_mo
+        detalle_insumos.append({"Insumo": mo_key, "Unidad": mo_info.get("unidad", "MT"), "Cantidad": round(cant_mo, 2), "P.V.P/Unit ($)": pvp_mo, "Precio ($)": precio_mo})
+    total = round(subtotal); iva = round(total * IVA_PERCENT / (1 + IVA_PERCENT)); subtotal_sin_iva = total - iva
+    tela_info = {"tela1": {"tipo": st.session_state.get("tipo_tela_sel_1", ""), "referencia": st.session_state.get("ref_tela_sel_1", ""), "color": st.session_state.get("color_tela_sel_1", ""), "pvp": _safe_float(st.session_state.get("pvp_tela_1"), 0.0), "modo_confeccion": st.session_state.get("modo_conf_1", "")}}
+    if st.session_state.get("pvp_tela_2") is not None:
+        tela_info["tela2"] = {"tipo": st.session_state.get("tipo_tela_sel_2", ""), "referencia": st.session_state.get("ref_tela_sel_2", ""), "color": st.session_state.get("color_tela_sel_2", ""), "pvp": _safe_float(st.session_state.get("pvp_tela_2"), 0.0), "modo_confeccion": st.session_state.get("modo_conf_2", "")}
+    else: tela_info["tela2"] = None
+    st.session_state.cortina_calculada = {"tipo": st.session_state.tipo_cortina_sel, "diseno": diseno, "multiplicador": multiplicador, "ancho": ancho, "alto": alto, "cantidad": num_cortinas, "telas": tela_info, "insumos_seleccion": st.session_state.get("insumos_seleccion", {}).copy(), "detalle_insumos": detalle_insumos, "subtotal": subtotal_sin_iva, "iva": iva, "total": total}
 
 def pantalla_datos():
-    # (Tu función `pantalla_datos` va aquí, sin cambios)
-    pass # Reemplaza este 'pass' con tu código original
+    st.header("Datos de la Cotización")
+    with st.expander("Datos del Cliente", expanded=True):
+        cliente = st.session_state.datos_cotizacion['cliente']
+        cliente['nombre'] = st.text_input("Nombre:", value=cliente.get('nombre', ''))
+        c1, c2 = st.columns(2)
+        cliente['cedula'] = c1.text_input("Cédula/NIT:", value=cliente.get('cedula', ''))
+        cliente['telefono'] = c2.text_input("Teléfono:", value=cliente.get('telefono', ''))
+        cliente['direccion'] = st.text_input("Dirección:", value=cliente.get('direccion', ''))
+        cliente['correo'] = st.text_input("Correo:", value=cliente.get('correo', ''))
+    with st.expander("Datos del Vendedor", expanded=True):
+        vendedor = st.session_state.datos_cotizacion['vendedor']
+        vendedor['nombre'] = st.text_input("Nombre Vendedor:", value=vendedor.get('nombre', ''))
+        vendedor['telefono'] = st.text_input("Teléfono Vendedor:", value=vendedor.get('telefono', ''))
 
 def pantalla_resumen():
-    # (Tu función `pantalla_resumen` va aquí, sin cambios)
-    pass # Reemplaza este 'pass' con tu código original
+    st.header("Resumen de la Cotización")
+    # (El código de `pantalla_resumen` va aquí, sin cambios)
+    pass
 
 def pantalla_gestion_datos():
-    # (Tu función `pantalla_gestion_datos` va aquí, sin cambios)
-    pass # Reemplaza este 'pass' con tu código original
+    st.header("Gestión de Archivos de Datos")
+    # (El código de `pantalla_gestion_datos` va aquí, sin cambios)
+    pass
 
-# Reemplaza tu función `pantalla_cotizador` con esta versión
 def pantalla_cotizador():
     st.header("Crea la Cortina")
     
@@ -385,15 +444,9 @@ def pantalla_cotizador():
     image_path = get_image_path("1")
     if os.path.exists(image_path):
         caption = os.path.basename(image_path)
-        
-        # CAMBIO 1: Buscamos "placeholder.png" en lugar de .jpg
-        if "placeholder.png" in caption: 
-            caption = "Vista previa no disponible"
-            
-        # CAMBIO 2: Usamos use_container_width en lugar de use_column_width
+        if "placeholder.png" in caption: caption = "Vista previa no disponible"
         st.image(image_path, caption=caption, use_container_width=True)
     else:
-        # CAMBIO 3: El mensaje de advertencia ahora pide .png
         st.warning("No se encontró la imagen. Asegúrate que 'placeholder.png' exista en la carpeta 'imagenes'.")
 
     st.markdown("---")
@@ -438,4 +491,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

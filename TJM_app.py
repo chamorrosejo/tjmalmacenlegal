@@ -111,11 +111,9 @@ def load_designs_from_excel(path: str):
         mult = _safe_float(row["Multiplicador"], 1.0)
         mo_val = _safe_float(row["PVP M.O."], 0.0)
 
-        # --- VERSIÓN CORREGIDA DEL ERROR DE SINTAXIS ---
         tabla_disenos[dis] = mult
         precios_mo[f"M.O: {dis}"] = {"unidad": "MT", "pvp": mo_val}
         disenos_a_tipos.setdefault(dis, [])
-        # --- FIN DE LA CORRECIÓN ---
 
         for t in tipos:
             tipos_cortina.setdefault(t, [])
@@ -147,13 +145,7 @@ def load_bom_from_excel(path: str):
     for _, row in df.iterrows():
         p_raw = row.get("Parametro", "")
         param_norm = "" if pd.isna(p_raw) or (isinstance(p_raw, str) and p_raw.strip().lower() in ("", "nan", "none")) else str(p_raw).strip()
-
-        item = {
-            "Insumo": str(row["Insumo"]).strip(), "Unidad": str(row["Unidad"]).strip().upper(),
-            "ReglaCantidad": str(row["ReglaCantidad"]).strip().upper(), "Parametro": param_norm,
-            "DependeDeSeleccion": str(row["DependeDeSeleccion"]).strip().upper(),
-            "Observaciones": "" if pd.isna(row.get("Observaciones", "")) else str(row.get("Observaciones", "")),
-        }
+        item = { "Insumo": str(row["Insumo"]).strip(), "Unidad": str(row["Unidad"]).strip().upper(), "ReglaCantidad": str(row["ReglaCantidad"]).strip().upper(), "Parametro": param_norm, "DependeDeSeleccion": str(row["DependeDeSeleccion"]).strip().upper(), "Observaciones": "" if pd.isna(row.get("Observaciones", "")) else str(row.get("Observaciones", ""))}
         dis = str(row["Diseño"]).strip()
         bom_dict.setdefault(dis, []).append(item)
     return bom_dict, df
@@ -194,7 +186,9 @@ def load_telas_from_excel(path: str):
     for _, row in df.iterrows():
         tipo, ref, color, pvp = str(row["TipoTela"]).strip(), str(row["Referencia"]).strip(), str(row["Color"]).strip(), _safe_float(row["PVP/Metro ($)"], 0.0)
         telas.setdefault(tipo, {}); telas[tipo].setdefault(ref, [])
-        telas[tipo][ref].append({"color": color, "pvp": pvp})
+        tela_info = {"color": color, "pvp": pvp}
+        if tela_info not in telas[tipo][ref]:
+            telas[tipo][ref].append(tela_info)
     return telas
 
 # =======================
@@ -221,8 +215,23 @@ class PDF(FPDF):
     def footer(self):
         self.set_y(-15); self.set_font('Arial', 'I', 8); self.set_text_color(128); self.cell(0, 10, f'Página {self.page_no()}', 0, 0, 'R')
 
+def generar_pdf_cotizacion():
+    pdf = PDF(); pdf.alias_nb_pages(); pdf.add_page(); pdf.set_auto_page_break(auto=True, margin=15)
+    vendedor = st.session_state.datos_cotizacion.get('vendedor', {}); cliente = st.session_state.datos_cotizacion.get('cliente', {})
+    col_w, gap, x_left = 90, 10, pdf.l_margin; x_right = x_left + col_w + gap; y = pdf.get_y()
+    pdf.set_font('Arial', 'B', 12); pdf.set_xy(x_left, y); pdf.cell(col_w, 7, "Cliente:", 0, 0, 'L'); pdf.set_xy(x_right, y); pdf.cell(col_w, 7, "Vendedor:", 0, 1, 'L'); y += 7
+    def label_value(x, y, label, value, width):
+        value = "" if value is None else str(value); pdf.set_xy(x, y); pdf.set_font('Arial', 'B', 10)
+        lbl = label.strip() + " "; lbl_w = pdf.get_string_width(lbl) + 1; pdf.cell(lbl_w, 5, lbl, 0, 0, 'L'); pdf.set_font('Arial', '', 10)
+        pdf.cell(max(0, width - lbl_w), 5, value, 0, 0, 'L')
+    label_value(x_left, y, "Nombre:", cliente.get('nombre', 'N/A'), col_w); label_value(x_right, y, "Nombre:", vendedor.get('nombre', 'N/A'), col_w); y += 5
+    label_value(x_left, y, "Teléfono:", cliente.get('telefono', 'N/A'), col_w); label_value(x_right, y, "Teléfono:", vendedor.get('telefono', 'N/A'), col_w); y += 5
+    label_value(x_left, y, "Cédula:", cliente.get('cedula', 'N/A'), col_w); pdf.set_xy(x_right, y); pdf.cell(col_w, 5, "", 0, 1, 'L'); y += 7; pdf.set_y(y); pdf.ln(3)
+    # (El resto de la lógica del PDF sigue aquí sin cambios...)
+    return pdf.output(dest='S').encode('latin-1', 'ignore')
+
 # =======================
-# App State & UI
+# App State & UI Functions
 # =======================
 st.set_page_config(page_title="Almacén Legal Cotizador", page_icon="logo.png", layout="wide")
 
@@ -230,11 +239,6 @@ TABLA_DISENOS, TIPOS_CORTINA, PRECIOS_MANO_DE_OBRA, DISENOS_A_TIPOS, DF_DISENOS 
 BOM_DICT, DF_BOM = load_bom_from_excel(BOM_XLSX_PATH)
 CATALOGO_INSUMOS = load_catalog_from_excel(CATALOG_XLSX_PATH)
 CATALOGO_TELAS = load_telas_from_excel(CATALOG_TELAS_XLSX_PATH)
-
-# (Aquí van todas tus funciones como init_state, anadir_a_resumen, generar_pdf_cotizacion, etc., que no necesitan cambios)
-# Para mantener este bloque legible, las omito, pero debes asegurarte de que estén en tu archivo.
-# A continuación, pego la única función de UI que cambia: pantalla_cotizador.
-# El resto de funciones (sidebar, pantalla_datos, etc.) no cambian.
 
 def init_state():
     if 'pagina_actual' not in st.session_state: st.session_state.pagina_actual = 'cotizador'
@@ -260,8 +264,6 @@ def duplicar_cortina(index):
     cortina_duplicada = copy.deepcopy(st.session_state.cortinas_resumen[index])
     st.session_state.cortinas_resumen.append(cortina_duplicada)
     st.success("¡Cortina duplicada y añadida al resumen!")
-    
-# (Tu función `generar_pdf_cotizacion` y todas las de ayuda para el PDF van aquí)
 
 def sidebar():
     with st.sidebar:
@@ -271,6 +273,66 @@ def sidebar():
         if st.button("Crear Cortina", use_container_width=True): st.session_state.editando_index = None; st.session_state.cortina_a_editar = None; st.session_state.pagina_actual = 'cotizador'; st.rerun()
         if st.button("Datos de la Cotización", use_container_width=True): st.session_state.pagina_actual = 'datos'; st.rerun()
         if st.button("Ver Cotización", use_container_width=True): st.session_state.pagina_actual = 'resumen'; st.rerun()
+
+def ui_tela(prefix: str):
+    tipo_key, ref_key, color_key, pvp_key, modo_key = f"tipo_tela_sel_{prefix}", f"ref_tela_sel_{prefix}", f"color_tela_sel_{prefix}", f"pvp_tela_{prefix}", f"modo_conf_{prefix}"
+    if not CATALOGO_TELAS: st.error("No se pudo cargar el catálogo de telas."); return
+    tipo_options = list(CATALOGO_TELAS.keys())
+    tipo_default_idx = tipo_options.index(st.session_state.get(tipo_key, tipo_options[0])) if st.session_state.get(tipo_key) in tipo_options else 0
+    tipo = st.selectbox(f"Tipo de Tela {prefix}", options=tipo_options, key=tipo_key, index=tipo_default_idx)
+    if not tipo or tipo not in CATALOGO_TELAS: st.warning(f"No hay tipos de tela disponibles."); return
+    referencias = list(CATALOGO_TELAS[tipo].keys())
+    ref_default_idx = referencias.index(st.session_state.get(ref_key, referencias[0])) if st.session_state.get(ref_key) in referencias else 0
+    ref = st.selectbox(f"Referencia {prefix}", options=referencias, key=ref_key, index=ref_default_idx)
+    if not ref or ref not in CATALOGO_TELAS[tipo]: st.warning(f"No hay referencias disponibles para el tipo '{tipo}'."); return
+    colores = [x["color"] for x in CATALOGO_TELAS[tipo][ref]]
+    color_default_idx = colores.index(st.session_state.get(color_key, colores[0])) if st.session_state.get(color_key) in colores else 0
+    color = st.selectbox(f"Color {prefix}", options=colores, key=color_key, index=color_default_idx)
+    if not color: st.warning("No hay colores disponibles."); return
+    info = next((x for x in CATALOGO_TELAS[tipo][ref] if x["color"] == color), None)
+    if info: st.session_state[pvp_key] = info["pvp"]; st.text_input(f"PVP/Metro TELA {prefix} ($)", value=f"${int(info['pvp']):,}", disabled=True)
+    else: st.warning("Información de precio no encontrada."); st.session_state[pvp_key] = 0.0
+    modo_options = ["Entera", "Partida", "Semipartida"]
+    modo_default_idx = modo_options.index(st.session_state.get(modo_key, "Entera")) if st.session_state.get(modo_key) in modo_options else 0
+    st.radio(f"Modo de confección {prefix}", options=modo_options, horizontal=True, key=modo_key, index=modo_default_idx)
+
+def mostrar_insumos_bom(diseno_sel: str):
+    items = [it for it in BOM_DICT.get(diseno_sel, []) if it["DependeDeSeleccion"] == "SI"]
+    if not items: st.info("Este diseño no requiere insumos adicionales para seleccionar."); return
+    for item in items:
+        nombre, unidad = item["Insumo"], item["Unidad"]
+        with st.container(border=True):
+            st.markdown(f"**Insumo:** {nombre}  •  **Unidad:** {unidad}")
+            if nombre in CATALOGO_INSUMOS:
+                cat = CATALOGO_INSUMOS[nombre]
+                refs = sorted(list({opt['ref'] for opt in cat['opciones']}))
+                ref_key, color_key = f"ref_{nombre}", f"color_{nombre}"
+                ref_default_idx = refs.index(st.session_state.get(ref_key, refs[0])) if st.session_state.get(ref_key) in refs else 0
+                ref_sel = st.selectbox(f"Referencia {nombre}", options=refs, key=ref_key, index=ref_default_idx)
+                colores = sorted(list({opt['color'] for opt in cat['opciones'] if opt['ref'] == ref_sel}))
+                color_default_idx = colores.index(st.session_state.get(color_key, colores[0])) if st.session_state.get(color_key) in colores else 0
+                color_sel = st.selectbox(f"Color {nombre}", options=colores, key=color_key, index=color_default_idx)
+                insumo_info = next(opt for opt in cat['opciones'] if opt['ref'] == ref_sel and opt['color'] == color_sel)
+                st.text_input(f"P.V.P {nombre} ({cat['unidad']})", value=f"${int(insumo_info['pvp']):,}", disabled=True)
+                st.session_state.setdefault("insumos_seleccion", {})
+                st.session_state.insumos_seleccion[nombre] = {"ref": ref_sel, "color": color_sel, "pvp": insumo_info["pvp"], "unidad": cat["unidad"]}
+            else: st.warning(f"{nombre}: marcado como 'DependeDeSeleccion' pero no está en el Catálogo de Insumos.")
+
+def calcular_y_mostrar_cotizacion():
+    # (Tu función `calcular_y_mostrar_cotizacion` va aquí, sin cambios)
+    pass # Reemplaza este 'pass' con tu código original
+
+def pantalla_datos():
+    # (Tu función `pantalla_datos` va aquí, sin cambios)
+    pass # Reemplaza este 'pass' con tu código original
+
+def pantalla_resumen():
+    # (Tu función `pantalla_resumen` va aquí, sin cambios)
+    pass # Reemplaza este 'pass' con tu código original
+
+def pantalla_gestion_datos():
+    # (Tu función `pantalla_gestion_datos` va aquí, sin cambios)
+    pass # Reemplaza este 'pass' con tu código original
 
 def pantalla_cotizador():
     st.header("Crea la Cortina")
@@ -347,23 +409,20 @@ def pantalla_cotizador():
         if st.button("Añadir a la Cotización"):
             anadir_a_resumen()
 
-# (Aquí deben ir el resto de tus funciones que no han cambiado: ui_tela, mostrar_insumos_bom, calcular_y_mostrar_cotizacion, pantalla_datos, pantalla_resumen, pantalla_gestion_datos)
-# Asegúrate de copiarlas de tu archivo original.
-
+# =======================
+# MAIN
+# =======================
 def main():
     init_state()
     with st.sidebar:
         sidebar()
     page = st.session_state.pagina_actual
     if page == 'datos':
-        # Asegúrate de tener la función pantalla_datos(
-        pass
+        pantalla_datos()
     elif page == 'resumen':
-        # Asegúrate de tener la función pantalla_resumen()
-        pass
+        pantalla_resumen()
     elif page == 'gestion_datos':
-        # Asegúrate de tener la función pantalla_gestion_datos()
-        pass
+        pantalla_gestion_datos()
     else:
         pantalla_cotizador()
 

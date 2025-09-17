@@ -32,15 +32,20 @@ def ceil_to_even(x: float) -> int:
 # =======================
 SCRIPT_DIR = os.path.dirname(__file__) if "__file__" in globals() else os.getcwd()
 
-_default_designs = os.path.join(SCRIPT_DIR, "data", "disenos_cortina.xlsx")
-_default_bom     = os.path.join(SCRIPT_DIR, "data", "bom.xlsx")
-_default_cat_ins = os.path.join(SCRIPT_DIR, "data", "catalogo_insumos.xlsx")
-_default_cat_tel = os.path.join(SCRIPT_DIR, "data", "catalogo_telas.xlsx")
+# --- RUTAS ACTUALIZADAS APUNTANDO A LA NUEVA ESTRUCTURA DE CARPETAS ---
+CORTINAS_DATA_PATH = os.path.join(SCRIPT_DIR, "data", "cortinas")
 
-DESIGNS_XLSX_PATH      = os.environ.get("DESIGNS_XLSX_PATH")       or st.secrets.get("DESIGNS_XLSX_PATH", _default_designs)
-BOM_XLSX_PATH          = os.environ.get("BOM_XLSX_PATH")           or st.secrets.get("BOM_XLSX_PATH", _default_bom)
-CATALOG_XLSX_PATH      = os.environ.get("CATALOG_XLSX_PATH")       or st.secrets.get("CATALOG_XLSX_PATH", _default_cat_ins)
+_default_designs = os.path.join(CORTINAS_DATA_PATH, "disenos.xlsx")
+_default_bom = os.path.join(CORTINAS_DATA_PATH, "bom.xlsx")
+_default_cat_ins = os.path.join(CORTINAS_DATA_PATH, "catalogo_insumos.xlsx")
+_default_cat_tel = os.path.join(CORTINAS_DATA_PATH, "catalogo_telas.xlsx")
+
+DESIGNS_XLSX_PATH       = os.environ.get("DESIGNS_XLSX_PATH") or st.secrets.get("DESIGNS_XLSX_PATH", _default_designs)
+BOM_XLSX_PATH           = os.environ.get("BOM_XLSX_PATH") or st.secrets.get("BOM_XLSX_PATH", _default_bom)
+CATALOG_XLSX_PATH       = os.environ.get("CATALOG_XLSX_PATH") or st.secrets.get("CATALOG_XLSX_PATH", _default_cat_ins)
 CATALOG_TELAS_XLSX_PATH = (os.environ.get("CATALOG_TELAS_XLSX_PATH") or st.secrets.get("CATALOG_TELAS_XLSX_PATH", _default_cat_tel))
+# --- FIN DE RUTAS ACTUALIZADAS ---
+
 
 REQUIRED_DESIGNS_COLS = ["Diseño", "Tipo", "Multiplicador", "PVP M.O."]
 REQUIRED_BOM_COLS     = ["Diseño", "Insumo", "Unidad", "ReglaCantidad", "Parametro", "DependeDeSeleccion", "Observaciones"]
@@ -178,33 +183,26 @@ def load_telas_from_excel(path: str):
     return telas
 
 # =======================
-# PDF (igual que antes)
+# PDF
 # =======================
 class PDF(FPDF):
     def header(self):
-        # Logo (igual)
         try:
             logo_path = os.path.join(SCRIPT_DIR, "logo.png")
             self.image(logo_path, 10, 8, 33)
         except Exception:
             pass
 
-        # Color del encabezado de la tabla: #1e263b (RGB 30,38,59)
         R, G, B = 30, 38, 59
-
-        # "Almacén Legal" en negrita y color #1e263b
         self.set_xy(45, 17)
         self.set_font('Arial', 'B', 14)
         self.set_text_color(R, G, B)
         self.cell(0, 10, 'Almacén Legal', 0, 1)
-
-        # "COTIZACIÓN" en negrita y color #1e263b
         self.set_xy(45, 25)
         self.set_font('Arial', 'B', 24)
         self.set_text_color(R, G, B)
         self.cell(0, 10, 'COTIZACIÓN', 0, 1)
 
-        # Fecha: etiqueta en negrita + valor en regular, ambos con el mismo color
         meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
                  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
         fecha_actual = datetime.now()
@@ -219,7 +217,6 @@ class PDF(FPDF):
         self.cell(ancho_etiqueta, 5, etiqueta, 0, 0, 'L')
         self.set_font('Arial', '', 10)
         self.cell(0, 5, fecha_valor, 0, 1, 'L')
-
         self.ln(10)
 
     def footer(self):
@@ -273,24 +270,18 @@ def duplicar_cortina(index):
     st.session_state.cortinas_resumen.append(cortina_duplicada)
     st.success("¡Cortina duplicada y añadida al resumen!")
 
-# Reemplaza la función generar_pdf_cotizacion() con este código
-# Reemplaza la función generar_pdf_cotizacion() con este código
 def generar_pdf_cotizacion():
     pdf = PDF()
     pdf.alias_nb_pages()
     pdf.add_page()
     pdf.set_auto_page_break(auto=True, margin=15)
-
-    # =======================
-    # Datos: Cliente (izq) y Vendedor (der)
-    # =======================
+    
     vendedor = st.session_state.datos_cotizacion.get('vendedor', {})
     cliente  = st.session_state.datos_cotizacion.get('cliente', {})
-
     col_w = 90
     gap = 10
-    x_left = pdf.l_margin           # CLIENTE
-    x_right = x_left + col_w + gap  # VENDEDOR
+    x_left = pdf.l_margin
+    x_right = x_left + col_w + gap
     y = pdf.get_y()
 
     pdf.set_font('Arial', 'B', 12)
@@ -308,7 +299,6 @@ def generar_pdf_cotizacion():
         pdf.set_font('Arial', '', 10)
         pdf.cell(max(0, width - lbl_w), 5, value, 0, 0, 'L')
 
-    # Cliente y Vendedor (valores en regular)
     label_value(x_left,  y, "Nombre:",   cliente.get('nombre', 'N/A'),  col_w)
     label_value(x_right, y, "Nombre:",   vendedor.get('nombre', 'N/A'), col_w); y += 5
     label_value(x_left,  y, "Teléfono:", cliente.get('telefono', 'N/A'),  col_w)
@@ -319,17 +309,13 @@ def generar_pdf_cotizacion():
     pdf.set_y(y)
     pdf.ln(3)
 
-    # =======================
-    # Tabla (sin Comentarios)
-    # =======================
-    column_widths = [10, 50, 40, 65, 25]  # N°, Nombre, Cant/Dim, Características, Total
+    column_widths = [10, 50, 40, 65, 25]
     header_h = 10
-    line_h = 5  # alto por línea
-    safety_pad = 2.0  # margen extra de seguridad a la altura de fila
+    line_h = 5
+    safety_pad = 2.0
 
     def draw_table_header():
         pdf.set_font('Arial', 'B', 9)
-        # Encabezado color #1e263b
         pdf.set_fill_color(30, 38, 59)
         pdf.set_text_color(255)
         headers = ['N°', 'Nombre', 'Cant. / Ancho x Alto', 'Características', 'Valor Total']
@@ -340,7 +326,6 @@ def generar_pdf_cotizacion():
         pdf.set_font('Arial', '', 9)
 
     def wrap_to_width(text: str, col_w: float) -> list[str]:
-        """Envuelve texto al ancho col_w con la fuente actual."""
         text = "" if text is None else str(text)
         out = []
         for para in text.split("\n"):
@@ -364,10 +349,6 @@ def generar_pdf_cotizacion():
         return out
 
     def measure_pairs_height(pairs, col_w, line_h):
-        """
-        Calcula la altura necesaria para imprimir pares (label, value)
-        con label en negrita y value normal, usando el mismo wrapping.
-        """
         total_lines = 0
         for label, value in pairs:
             lbl = label.strip() + " "
@@ -376,28 +357,22 @@ def generar_pdf_cotizacion():
             avail_w = max(1, col_w - lbl_w)
             pdf.set_font('Arial', '', 9)
             wrapped_vals = wrap_to_width(value, avail_w) or [""]
-            total_lines += len(wrapped_vals)  # una línea por cada segmento envuelto
+            total_lines += len(wrapped_vals)
         return total_lines * line_h
 
     def draw_label_value_in_cell(x, y, w, line_h, pairs):
-        """Dibuja los pares con label en negrita y value normal (con wrapping)."""
         cur_y = y
         for label, value in pairs:
             lbl = label.strip() + " "
             pdf.set_font('Arial', 'B', 9)
             lbl_w = pdf.get_string_width(lbl) + 1
             avail_w = max(1, w - lbl_w)
-
             pdf.set_font('Arial', '', 9)
             wrapped_vals = wrap_to_width(value, avail_w) or [""]
-
-            # primera línea: label + primer segmento del valor
             pdf.set_xy(x, cur_y)
             pdf.set_font('Arial', 'B', 9); pdf.cell(lbl_w, line_h, lbl, 0, 0, 'L')
             pdf.set_font('Arial', '', 9);  pdf.cell(avail_w, line_h, wrapped_vals[0], 0, 1, 'L')
             cur_y += line_h
-
-            # líneas siguientes: solo el valor
             for seg in wrapped_vals[1:]:
                 pdf.set_xy(x + lbl_w, cur_y)
                 pdf.set_font('Arial', '', 9)
@@ -408,7 +383,6 @@ def generar_pdf_cotizacion():
     draw_table_header()
 
     for i, cortina in enumerate(st.session_state.cortinas_resumen):
-        # Pares (label, value) de Características
         pairs = []
         if cortina['telas']['tela1']:
             t1 = cortina['telas']['tela1']
@@ -418,55 +392,43 @@ def generar_pdf_cotizacion():
             pairs.append(("Tela 2:", f"{t2['referencia']} - {t2['color']} [{t2['modo_confeccion']}]"))
         for insumo, info in (cortina.get('insumos_seleccion', {}) or {}).items():
             pairs.append((f"{insumo}:", f"{info['ref']} - {info['color']}"))
-
-        # Otras columnas
+        
         num = str(i + 1)
         nombre = cortina['diseno']
         ancho_calc = cortina['ancho'] * cortina['multiplicador']
         cant_str = f"{cortina['cantidad']} und\n{ancho_calc:.2f} x {cortina['alto']:.2f} mts"
         valor_total = f"${int(cortina['total']):,}"
 
-        # Altura de fila = max(altura Cant/Dim, altura Características) + padding
         pdf.set_font('Arial', '', 9)
         cant_lines = wrap_to_width(cant_str, column_widths[2])
         cant_h = len(cant_lines) * line_h
         car_h = measure_pairs_height(pairs, column_widths[3], line_h)
         row_h = max(cant_h, car_h, line_h) + safety_pad
 
-        # Salto de página si no cabe
         if pdf.get_y() + row_h > pdf.page_break_trigger:
             pdf.add_page()
             draw_table_header()
-
-        # Bordes
+        
         x0, y0 = pdf.get_x(), pdf.get_y()
         x = x0
         for w in column_widths:
             pdf.rect(x, y0, w, row_h)
             x += w
 
-        # Contenidos
         pdf.set_xy(x0, y0)
         pdf.multi_cell(column_widths[0], line_h, num, 0, 'C')
-
         pdf.set_xy(x0 + column_widths[0], y0)
         pdf.multi_cell(column_widths[1], line_h, nombre, 0, 'L')
-
         pdf.set_xy(x0 + sum(column_widths[:2]), y0)
         pdf.multi_cell(column_widths[2], line_h, "\n".join(cant_lines), 0, 'L')
-
         x_car = x0 + sum(column_widths[:3])
         draw_label_value_in_cell(x_car, y0, column_widths[3], line_h, pairs)
-
         pdf.set_xy(x0 + sum(column_widths[:4]), y0)
         pdf.multi_cell(column_widths[4], line_h, valor_total, 0, 'R')
-
-        # Siguiente fila
         pdf.set_xy(x0, y0 + row_h)
-
+    
     pdf.ln(10)
-
-    # Totales
+    
     subtotal = sum(c['subtotal'] for c in st.session_state.cortinas_resumen)
     iva = sum(c['iva'] for c in st.session_state.cortinas_resumen)
     total_final = sum(c['total'] for c in st.session_state.cortinas_resumen)
@@ -479,11 +441,9 @@ def generar_pdf_cotizacion():
 
     return pdf.output(dest='S').encode('latin-1', 'ignore')
 
-
-
 def sidebar():
     with st.sidebar:
-        st.image("logo.png") 
+        st.image("logo.png")
         st.title("Almacén Legal Cotizador")
         
         if st.button("Gestión de Datos", use_container_width=True):
@@ -669,7 +629,6 @@ def pantalla_cotizador():
         st.markdown("---")
         if st.button("Añadir a la Cotización"):
             anadir_a_resumen()
-
 
 def mostrar_insumos_bom(diseno_sel: str):
     items = [it for it in BOM_DICT.get(diseno_sel, []) if it["DependeDeSeleccion"] == "SI"]
@@ -920,8 +879,8 @@ def pantalla_resumen():
                         st.rerun()
                 
     total_final = sum(c['total'] for c in st.session_state.cortinas_resumen)
-    iva = total_final * IVA_PERCENT
-    subtotal = total_final - iva
+    iva = total_final * IVA_PERCENT # Esto podría ser incorrecto si los totales ya tienen IVA
+    subtotal = total_final - iva # Asumiendo que el total viene con IVA
     st.markdown("---")
     
     if st.session_state.cortinas_resumen:
@@ -941,10 +900,6 @@ def pantalla_resumen():
 
 # --- PANTALLA DE GESTIÓN DE DATOS ---
 def create_template_excel(column_names: list, sheet_name: str = "Plantilla"):
-    """
-    Crea un archivo Excel en memoria con solo los encabezados de las columnas.
-    Retorna los bytes del archivo para que Streamlit pueda descargarlo.
-    """
     df = pd.DataFrame(columns=column_names)
     buffer = io.BytesIO()
     with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
@@ -1029,18 +984,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

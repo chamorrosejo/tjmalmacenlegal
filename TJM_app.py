@@ -447,43 +447,47 @@ def pantalla_resumen():
             modo_conf = cortina.get('telas', {}).get('tela1', {}).get('modo_confeccion', 'Entera')
             medidas_str = f"{ancho:.2f} x {alto:.2f} mts".replace('.', ',')
 
-            # --- Fila 1: Título y Botones de Acción ---
-            col_titulo, col_botones = st.columns([4, 1])
-            with col_titulo:
-                st.subheader(f"{cantidad}x {diseno}")
+            # --- Estructura principal de 2 columnas: [Imagen | Detalles] ---
+            col_img, col_details = st.columns([2, 4])
 
-            with col_botones:
-                b1, b2, b3 = st.columns(3)
-                if b1.button("✏️", key=f"edit_{i}", help="Editar"):
-                    st.session_state.cortina_a_editar = st.session_state.cortinas_resumen[i]
-                    st.session_state.editando_index = i
-                    st.session_state.pagina_actual = 'cotizador'
-                    st.rerun()
-                
-                if b2.button("➕", key=f"dup_{i}", help="Duplicar"):
-                    duplicar_cortina(i)
-                    st.rerun()
-
-                if b3.button("❌", key=f"del_{i}", help="Eliminar", type="primary"):
-                    index_a_eliminar = i
-
-            # --- Fila 2: Cantidad y Medidas ---
-            st.markdown(f"**Cantidad:** {cantidad}")
-            st.markdown(f"**Medidas:** {medidas_str} (*{modo_conf}*)")
-
-            # --- Fila 3: Precio ---
-            st.title(f"${int(total):,}")
-            st.markdown("---")
-
-            # --- Fila 4: Imagen e Insumos ---
-            col_img, col_insumos = st.columns([2, 3])
             with col_img:
                 image_path = get_image_path_for_summary(diseno, cortina.get('telas', {}).get('tela1'))
                 if os.path.exists(image_path):
-                    # Corregido: se usa use_container_width en lugar de use_column_width
                     st.image(image_path, use_container_width=True)
+            
+            with col_details:
+                # Fila 1: Título y Botones
+                col_titulo, col_botones = st.columns([3, 1])
+                with col_titulo:
+                    # El título ahora incluye "Cortina" antes del diseño
+                    st.subheader(f"Cortina {diseno}")
+                
+                with col_botones:
+                    b1, b2, b3 = st.columns(3)
+                    if b1.button("✏️", key=f"edit_{i}", help="Editar"):
+                        st.session_state.cortina_a_editar = st.session_state.cortinas_resumen[i]
+                        st.session_state.editando_index = i
+                        st.session_state.pagina_actual = 'cotizador'
+                        st.rerun()
+                    
+                    if b2.button("➕", key=f"dup_{i}", help="Duplicar"):
+                        duplicar_cortina(i)
+                        st.rerun()
 
-            with col_insumos:
+                    if b3.button("❌", key=f"del_{i}", help="Eliminar", type="primary"):
+                        index_a_eliminar = i
+                
+                # Fila 2: Cantidad y Medidas
+                st.markdown(f"**Cantidad:** {cantidad}")
+                st.markdown(f"**Medidas:** {medidas_str} (*{modo_conf}*)")
+
+                # Fila 3: Precio
+                st.title(f"${int(total):,}")
+
+                # Fila 4: Divisor
+                st.markdown("---")
+
+                # Fila 5: Lista de Insumos
                 df_insumos = pd.DataFrame(cortina['detalle_insumos'])
                 for _, row in df_insumos.iterrows():
                     st.text(f"{row['Cantidad']} {row['Unidad']} - {row['Insumo']}")
@@ -500,21 +504,7 @@ def pantalla_resumen():
     iva_total = sum(c['iva'] for c in st.session_state.cortinas_resumen)
     gran_total = sum(c['total'] for c in st.session_state.cortinas_resumen)
 
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Subtotal General", f"${int(subtotal_total):,}")
-    c2.metric("IVA General", f"${int(iva_total):,}")
-    c3.metric("Gran Total", f"${int(gran_total):,}")
-
-    st.markdown("---")
-    
-    pdf_bytes = generar_pdf_cotizacion()
-    st.download_button(
-        label="📄 Descargar Cotización en PDF",
-        data=pdf_bytes,
-        file_name=f"cotizacion_{st.session_state.datos_cotizacion.get('cliente', {}).get('nombre', 'cliente')}.pdf",
-        mime="application/pdf",
-        use_container_width=True
-    )
+    c1, c2, c3 = st.columns
     # Para la descarga en Excel, necesitarías una función similar a generar_pdf
     # st.download_button(
     #     label="📊 Descargar Resumen en Excel",
@@ -624,6 +614,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 

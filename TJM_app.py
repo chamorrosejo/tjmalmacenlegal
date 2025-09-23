@@ -393,8 +393,80 @@ def pantalla_datos():
 
 def pantalla_resumen():
     st.header("Resumen de la Cotización")
-    # (El código de `pantalla_resumen` va aquí, sin cambios)
-    pass
+
+    if not st.session_state.cortinas_resumen:
+        st.info("Aún no has añadido ninguna cortina a la cotización.")
+        st.image("https://i.imgur.com/u2Hp1s2.png", width=200) # Imagen de ejemplo
+        return
+
+    # --- Lógica para eliminar o editar ---
+    index_a_eliminar = None
+    for i, cortina in enumerate(st.session_state.cortinas_resumen):
+        with st.container(border=True):
+            c1, c2 = st.columns([3, 1])
+            with c1:
+                diseno = cortina.get('diseno', 'N/A')
+                cantidad = cortina.get('cantidad', 0)
+                ancho = cortina.get('ancho', 0)
+                alto = cortina.get('alto', 0)
+                total = cortina.get('total', 0)
+
+                st.subheader(f"Item {i+1}: {cantidad}x Cortina(s) '{diseno}'")
+                st.markdown(f"**Medidas:** {ancho}m ancho x {alto}m alto")
+                st.markdown(f"#### Total: ${int(total):,}")
+
+            with c2:
+                if st.button("✏️ Editar", key=f"edit_{i}", use_container_width=True):
+                    st.session_state.cortina_a_editar = st.session_state.cortinas_resumen[i]
+                    st.session_state.editando_index = i
+                    st.session_state.pagina_actual = 'cotizador'
+                    st.rerun()
+
+                if st.button("➕ Duplicar", key=f"dup_{i}", use_container_width=True):
+                    duplicar_cortina(i)
+                    st.rerun()
+
+                if st.button("❌ Eliminar", key=f"del_{i}", use_container_width=True, type="primary"):
+                    index_a_eliminar = i
+                    
+    if index_a_eliminar is not None:
+        st.session_state.cortinas_resumen.pop(index_a_eliminar)
+        st.rerun()
+
+    # --- Totales y Descarga ---
+    st.markdown("---")
+    st.subheader("Totales de la Cotización")
+
+    subtotal_total = sum(c['subtotal'] for c in st.session_state.cortinas_resumen)
+    iva_total = sum(c['iva'] for c in st.session_state.cortinas_resumen)
+    gran_total = sum(c['total'] for c in st.session_state.cortinas_resumen)
+
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Subtotal General", f"${int(subtotal_total):,}")
+    c2.metric("IVA General", f"${int(iva_total):,}")
+    c3.metric("Gran Total", f"${int(gran_total):,}")
+
+    st.markdown("---")
+    
+    # Botón de descarga para PDF
+    pdf_bytes = generar_pdf_cotizacion() # Asegúrate que esta función esté completa
+    st.download_button(
+        label="📄 Descargar Cotización en PDF",
+        data=pdf_bytes,
+        file_name=f"cotizacion_{st.session_state.datos_cotizacion.get('cliente', {}).get('nombre', 'cliente')}.pdf",
+        mime="application/pdf",
+        use_container_width=True
+    )
+    
+    # Para la descarga en Excel, necesitarías una función similar a generar_pdf
+    # st.download_button(
+    #     label="📊 Descargar Resumen en Excel",
+    #     # data=generar_excel_resumen(), # Necesitarías crear esta función
+    #     # file_name="resumen_cotizacion.xlsx",
+    #     # mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    #     use_container_width=True,
+    #     disabled=True # Habilitar cuando la función exista
+    # )
 
 def pantalla_gestion_datos():
     st.header("Gestión de Archivos de Datos")
@@ -495,3 +567,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

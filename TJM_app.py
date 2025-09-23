@@ -26,7 +26,43 @@ def _safe_float(val, default=0.0):
 def ceil_to_even(x: float) -> int:
     n = math.ceil(x)
     return n if n % 2 == 0 else n + 1
+def get_image_path_for_summary(diseno, tela_info):
+    """
+    Versión de get_image_path para usar en el resumen de cotización.
+    Toma el diseño y la información de la tela como argumentos en lugar de leer el session_state.
+    """
+    placeholder = os.path.join(SCRIPT_DIR, "imagenes", "placeholder.png")
+    
+    # Si falta información clave, devuelve el placeholder
+    if not all([diseno, tela_info]):
+        return placeholder
 
+    tipo_tela = tela_info.get('tipo', '')
+    ref = tela_info.get('referencia', '')
+    color = tela_info.get('color', '')
+
+    if not all([tipo_tela, ref, color]):
+        return placeholder
+
+    # Limpiar nombres para coincidir con la estructura de carpetas
+    diseno_cleaned = str(diseno).strip().replace(" ", "_").upper()
+    tipo_tela_cleaned = str(tipo_tela).strip().replace(" ", "_")
+    ref_cleaned = str(ref).strip().replace(" ", "_").replace(".", "")
+    color_cleaned = str(color).strip().replace(" ", "_")
+
+    base_name = f"{tipo_tela_cleaned} - {ref_cleaned} - {color_cleaned}"
+
+    # Rutas candidatas (intenta .jpg y .png)
+    candidates = [
+        os.path.join(SCRIPT_DIR, "imagenes", "cortinas", diseno_cleaned, tipo_tela_cleaned, base_name + ".jpg"),
+        os.path.join(SCRIPT_DIR, "imagenes", "cortinas", diseno_cleaned, tipo_tela_cleaned, base_name + ".png"),
+    ]
+
+    for p in candidates:
+        if os.path.exists(p):
+            return p
+            
+    return placeholder
 # =======================
 # Paths & constants
 # =======================
@@ -396,26 +432,45 @@ def pantalla_resumen():
 
     if not st.session_state.cortinas_resumen:
         st.info("Aún no has añadido ninguna cortina a la cotización.")
-        st.image("https://i.imgur.com/u2Hp1s2.png", width=200) # Imagen de ejemplo
+        st.image("https://i.imgur.com/u2Hp1s2.png", width=200)
         return
 
-    # --- Lógica para eliminar o editar ---
     index_a_eliminar = None
     for i, cortina in enumerate(st.session_state.cortinas_resumen):
         with st.container(border=True):
-            c1, c2 = st.columns([3, 1])
-            with c1:
+            # Estructura principal de la tarjeta: [Imagen | Detalles | Botones]
+            col_img, col_details, col_actions = st.columns([1, 4, 1.2])
+
+            with col_img:
+                # Usamos la nueva función para obtener la imagen correcta
+                image_path = get_image_path_for_summary(cortina.get('diseno'), cortina.get('telas', {}).get('tela1'))
+                if os.path.exists(image_path):
+                    st.image(image_path)
+                else:
+                    st.markdown("🖼️") # Emoji si no hay imagen
+
+            with col_details:
+                # --- Encabezado con el nuevo formato de título ---
                 diseno = cortina.get('diseno', 'N/A')
-                cantidad = cortina.get('cantidad', 0)
                 ancho = cortina.get('ancho', 0)
                 alto = cortina.get('alto', 0)
                 total = cortina.get('total', 0)
+                
+                # Formateamos el ancho y alto para el título
+                medidas_str = f"{ancho:.2f} x {alto:.2f} mts".replace('.', ',')
+                titulo = f"**{diseno} – {medidas_str}**"
 
-                st.subheader(f"Item {i+1}: {cantidad}x Cortina(s) '{diseno}'")
-                st.markdown(f"**Medidas:** {ancho}m ancho x {alto}m alto")
-                st.markdown(f"#### Total: ${int(total):,}")
+                title_col, price_col = st.columns([3, 1])
+                title_col.markdown(titulo)
+                price_col.markdown(f"#### ${int(total):,}")
+                st.markdown("---") # Divisor
 
-            with c2:
+                # --- Tabla de Insumos ---
+                df_insumos = pd.DataFrame(cortina['detalle_insumos'])
+                df_display = df_insumos[['Cantidad', 'Unidad', 'Insumo']].copy()
+                st.dataframe(df_display, use_container_width=True, hide_index=True)
+
+            with col_actions:
                 if st.button("✏️ Editar", key=f"edit_{i}", use_container_width=True):
                     st.session_state.cortina_a_editar = st.session_state.cortinas_resumen[i]
                     st.session_state.editando_index = i
@@ -433,7 +488,7 @@ def pantalla_resumen():
         st.session_state.cortinas_resumen.pop(index_a_eliminar)
         st.rerun()
 
-    # --- Totales y Descarga ---
+    # --- (El resto de la función para los totales y la descarga no cambia) ---
     st.markdown("---")
     st.subheader("Totales de la Cotización")
 
@@ -448,8 +503,7 @@ def pantalla_resumen():
 
     st.markdown("---")
     
-    # Botón de descarga para PDF
-    pdf_bytes = generar_pdf_cotizacion() # Asegúrate que esta función esté completa
+    pdf_bytes = generar_pdf_cotizacion()
     st.download_button(
         label="📄 Descargar Cotización en PDF",
         data=pdf_bytes,
@@ -567,4 +621,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 

@@ -437,68 +437,62 @@ def pantalla_resumen():
 
     index_a_eliminar = None
     for i, cortina in enumerate(st.session_state.cortinas_resumen):
-        # Usamos un expander para cada tarjeta, que se ve similar al diseño de tarjeta
         with st.container(border=True):
-            # Estructura principal: [Imagen | Detalles]
-            col_img, col_details = st.columns([1.5, 5])
+            # --- Variables ---
+            diseno = cortina.get('diseno', 'N/A')
+            cantidad = cortina.get('cantidad', 1)
+            ancho = cortina.get('ancho', 0)
+            alto = cortina.get('alto', 0)
+            total = cortina.get('total', 0)
+            modo_conf = cortina.get('telas', {}).get('tela1', {}).get('modo_confeccion', 'Entera')
+            medidas_str = f"{ancho:.2f} x {alto:.2f} mts".replace('.', ',')
 
+            # --- Fila 1: Título y Botones de Acción ---
+            col_titulo, col_botones = st.columns([4, 1])
+            with col_titulo:
+                st.subheader(f"{cantidad}x {diseno}")
+
+            with col_botones:
+                b1, b2, b3 = st.columns(3)
+                if b1.button("✏️", key=f"edit_{i}", help="Editar"):
+                    st.session_state.cortina_a_editar = st.session_state.cortinas_resumen[i]
+                    st.session_state.editando_index = i
+                    st.session_state.pagina_actual = 'cotizador'
+                    st.rerun()
+                
+                if b2.button("➕", key=f"dup_{i}", help="Duplicar"):
+                    duplicar_cortina(i)
+                    st.rerun()
+
+                if b3.button("❌", key=f"del_{i}", help="Eliminar", type="primary"):
+                    index_a_eliminar = i
+
+            # --- Fila 2: Cantidad y Medidas ---
+            st.markdown(f"**Cantidad:** {cantidad}")
+            st.markdown(f"**Medidas:** {medidas_str} (*{modo_conf}*)")
+
+            # --- Fila 3: Precio ---
+            st.title(f"${int(total):,}")
+            st.markdown("---")
+
+            # --- Fila 4: Imagen e Insumos ---
+            col_img, col_insumos = st.columns([2, 3])
             with col_img:
-                image_path = get_image_path_for_summary(cortina.get('diseno'), cortina.get('telas', {}).get('tela1'))
+                image_path = get_image_path_for_summary(diseno, cortina.get('telas', {}).get('tela1'))
                 if os.path.exists(image_path):
-                    st.image(image_path, use_column_width=True)
+                    # Corregido: se usa use_container_width en lugar de use_column_width
+                    st.image(image_path, use_container_width=True)
 
-            with col_details:
-                # --- Encabezado ---
-                diseno = cortina.get('diseno', 'N/A')
-                cantidad = cortina.get('cantidad', 1)
-                ancho = cortina.get('ancho', 0)
-                alto = cortina.get('alto', 0)
-                total = cortina.get('total', 0)
-                modo_conf = cortina.get('telas', {}).get('tela1', {}).get('modo_confeccion', 'Entera')
-
-                # Título con cantidad
-                st.subheader(f"{cantidad}x Cortina {diseno}")
-
-                # Precio y botones en una misma línea
-                price_col, actions_col = st.columns([1, 1])
-
-                with price_col:
-                    st.title(f"${int(total):,}")
-                
-                with actions_col:
-                    # Botones en horizontal
-                    b1, b2, b3 = st.columns(3)
-                    if b1.button("✏️", key=f"edit_{i}", help="Editar"):
-                        st.session_state.cortina_a_editar = st.session_state.cortinas_resumen[i]
-                        st.session_state.editando_index = i
-                        st.session_state.pagina_actual = 'cotizador'
-                        st.rerun()
-                    
-                    if b2.button("➕", key=f"dup_{i}", help="Duplicar"):
-                        duplicar_cortina(i)
-                        st.rerun()
-
-                    if b3.button("❌", key=f"del_{i}", help="Eliminar", type="primary"):
-                        index_a_eliminar = i
-                
-                # Medidas y modo de confección
-                medidas_str = f"{ancho:.2f} x {alto:.2f} mts".replace('.', ',')
-                st.markdown(f"**Medidas:** {medidas_str} (*{modo_conf}*)")
-                st.markdown("---",) # Divisor
-
-                # --- Lista de Insumos ---
+            with col_insumos:
                 df_insumos = pd.DataFrame(cortina['detalle_insumos'])
                 for _, row in df_insumos.iterrows():
-                    cant = row['Cantidad']
-                    unidad = row['Unidad']
-                    insumo = row['Insumo']
-                    st.text(f"{cant} {unidad} - {insumo}")
-                    
+                    st.text(f"{row['Cantidad']} {row['Unidad']} - {row['Insumo']}")
+
     if index_a_eliminar is not None:
         st.session_state.cortinas_resumen.pop(index_a_eliminar)
         st.rerun()
 
-    # --- (El resto de la función para los totales y la descarga no cambia) ---
+    # --- Totales y Descarga (sin cambios) ---
     st.markdown("---")
     st.subheader("Totales de la Cotización")
 
@@ -630,6 +624,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
